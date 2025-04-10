@@ -1,0 +1,573 @@
+from django.db import models
+from django.utils import timezone
+from authentication.models import User
+
+class Address(models.Model):
+    """Địa chỉ của người dùng"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    street = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20)
+    country = models.CharField(max_length=100)
+    is_primary = models.BooleanField(default=False)
+    address_type = models.CharField(max_length=20, choices=[
+        ('HOME', 'Home'),
+        ('WORK', 'Work'),
+        ('BILLING', 'Billing'),
+        ('OTHER', 'Other')
+    ], default='HOME')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.address_type}: {self.street}, {self.city}"
+
+    class Meta:
+        verbose_name = "Address"
+        verbose_name_plural = "Addresses"
+        ordering = ['-is_primary', '-created_at']
+
+class ContactInfo(models.Model):
+    """Thông tin liên hệ của người dùng"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='contact_info')
+    phone_number = models.CharField(max_length=20)
+    secondary_phone = models.CharField(max_length=20, blank=True, null=True)
+    work_phone = models.CharField(max_length=20, blank=True, null=True)
+    emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
+    emergency_contact_relationship = models.CharField(max_length=50, blank=True, null=True)
+    emergency_contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    preferred_contact_method = models.CharField(max_length=20, choices=[
+        ('EMAIL', 'Email'),
+        ('PHONE', 'Phone'),
+        ('SMS', 'SMS')
+    ], default='EMAIL')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.phone_number}"
+
+    class Meta:
+        verbose_name = "Contact Information"
+        verbose_name_plural = "Contact Information"
+
+class UserDocument(models.Model):
+    """Tài liệu của người dùng (ID, giấy phép, chứng chỉ, v.v.)"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
+    document_type = models.CharField(max_length=50, choices=[
+        ('ID_CARD', 'ID Card'),
+        ('PASSPORT', 'Passport'),
+        ('DRIVER_LICENSE', 'Driver License'),
+        ('MEDICAL_LICENSE', 'Medical License'),
+        ('INSURANCE_CARD', 'Insurance Card'),
+        ('CERTIFICATION', 'Certification'),
+        ('OTHER', 'Other')
+    ])
+    document_number = models.CharField(max_length=100)
+    issue_date = models.DateField()
+    expiry_date = models.DateField(null=True, blank=True)
+    issuing_authority = models.CharField(max_length=200)
+    document_file = models.CharField(max_length=255, help_text="Path to document file in storage service")
+    is_verified = models.BooleanField(default=False)
+    verification_date = models.DateTimeField(null=True, blank=True)
+    verification_notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.document_type}: {self.document_number}"
+
+    class Meta:
+        verbose_name = "User Document"
+        verbose_name_plural = "User Documents"
+        unique_together = ['user', 'document_type', 'document_number']
+
+    def verify(self, notes=None):
+        """Xác minh tài liệu"""
+        self.is_verified = True
+        self.verification_date = timezone.now()
+        if notes:
+            self.verification_notes = notes
+        self.save()
+
+class PatientProfile(models.Model):
+    """Hồ sơ bệnh nhân"""
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+    ]
+
+    BLOOD_TYPE_CHOICES = [
+        ('A+', 'A+'),
+        ('A-', 'A-'),
+        ('B+', 'B+'),
+        ('B-', 'B-'),
+        ('AB+', 'AB+'),
+        ('AB-', 'AB-'),
+        ('O+', 'O+'),
+        ('O-', 'O-'),
+    ]
+
+    MARITAL_STATUS_CHOICES = [
+        ('SINGLE', 'Single'),
+        ('MARRIED', 'Married'),
+        ('DIVORCED', 'Divorced'),
+        ('WIDOWED', 'Widowed'),
+        ('OTHER', 'Other'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient_profile')
+    date_of_birth = models.DateField()
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    blood_type = models.CharField(max_length=3, choices=BLOOD_TYPE_CHOICES, blank=True, null=True)
+    height = models.DecimalField(max_digits=5, decimal_places=2, help_text="Height in cm", null=True, blank=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=2, help_text="Weight in kg", null=True, blank=True)
+    allergies = models.TextField(blank=True, null=True)
+    medical_conditions = models.TextField(blank=True, null=True)
+    current_medications = models.TextField(blank=True, null=True, help_text="List of current medications")
+    family_medical_history = models.TextField(blank=True, null=True)
+    emergency_contact = models.ForeignKey(ContactInfo, on_delete=models.SET_NULL, null=True, blank=True, related_name='emergency_for_patients')
+    primary_language = models.CharField(max_length=50, default='English')
+    requires_translator = models.BooleanField(default=False)
+    marital_status = models.CharField(max_length=20, choices=MARITAL_STATUS_CHOICES, blank=True, null=True)
+    occupation = models.CharField(max_length=100, blank=True, null=True)
+    primary_care_physician = models.ForeignKey('DoctorProfile', on_delete=models.SET_NULL, null=True, blank=True, related_name='primary_patients')
+    preferred_pharmacy = models.ForeignKey('PharmacistProfile', on_delete=models.SET_NULL, null=True, blank=True, related_name='preferred_by_patients')
+    insurance_information = models.ForeignKey('InsuranceInformation', on_delete=models.SET_NULL, null=True, blank=True, related_name='covered_patients')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} - Patient Profile"
+
+    def get_age(self):
+        """Tính tuổi của bệnh nhân"""
+        today = timezone.now().date()
+        return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+
+    def get_bmi(self):
+        """Tính chỉ số BMI"""
+        if self.height and self.weight and self.height > 0:
+            # Convert height from cm to m
+            height_m = self.height / 100
+            return round(self.weight / (height_m * height_m), 2)
+        return None
+
+    class Meta:
+        verbose_name = "Patient Profile"
+        verbose_name_plural = "Patient Profiles"
+
+class DoctorProfile(models.Model):
+    """Hồ sơ bác sĩ"""
+    SPECIALIZATION_CHOICES = [
+        ('CARDIOLOGY', 'Cardiology'),
+        ('DERMATOLOGY', 'Dermatology'),
+        ('ENDOCRINOLOGY', 'Endocrinology'),
+        ('GASTROENTEROLOGY', 'Gastroenterology'),
+        ('GENERAL_PRACTICE', 'General Practice'),
+        ('HEMATOLOGY', 'Hematology'),
+        ('NEUROLOGY', 'Neurology'),
+        ('OBSTETRICS', 'Obstetrics'),
+        ('ONCOLOGY', 'Oncology'),
+        ('OPHTHALMOLOGY', 'Ophthalmology'),
+        ('ORTHOPEDICS', 'Orthopedics'),
+        ('PEDIATRICS', 'Pediatrics'),
+        ('PSYCHIATRY', 'Psychiatry'),
+        ('RADIOLOGY', 'Radiology'),
+        ('SURGERY', 'Surgery'),
+        ('UROLOGY', 'Urology'),
+        ('OTHER', 'Other'),
+    ]
+
+    AVAILABILITY_STATUS_CHOICES = [
+        ('AVAILABLE', 'Available'),
+        ('UNAVAILABLE', 'Unavailable'),
+        ('ON_LEAVE', 'On Leave'),
+        ('EMERGENCY_ONLY', 'Emergency Only'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor_profile')
+    specialization = models.CharField(max_length=100, choices=SPECIALIZATION_CHOICES)
+    secondary_specialization = models.CharField(max_length=100, choices=SPECIALIZATION_CHOICES, blank=True, null=True)
+    license_number = models.CharField(max_length=50, unique=True)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    years_of_experience = models.PositiveIntegerField()
+    education = models.TextField()
+    board_certifications = models.TextField(blank=True, null=True)
+    hospital_affiliations = models.TextField(blank=True, null=True)
+    research_publications = models.TextField(blank=True, null=True)
+    biography = models.TextField(blank=True, null=True)
+    consultation_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    availability_status = models.CharField(max_length=20, choices=AVAILABILITY_STATUS_CHOICES, default='AVAILABLE')
+    availability_notes = models.TextField(blank=True, null=True)
+    max_patients_per_day = models.PositiveIntegerField(default=20)
+    accepts_new_patients = models.BooleanField(default=True)
+    languages_spoken = models.CharField(max_length=200, default='English')
+    profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
+    rating_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Dr. {self.user.first_name} {self.user.last_name} - {self.specialization}"
+
+    def update_rating(self, new_rating):
+        """Cập nhật đánh giá trung bình"""
+        if self.rating_count == 0:
+            self.average_rating = new_rating
+        else:
+            total_rating = self.average_rating * self.rating_count
+            self.average_rating = (total_rating + new_rating) / (self.rating_count + 1)
+        self.rating_count += 1
+        self.save()
+
+    class Meta:
+        verbose_name = "Doctor Profile"
+        verbose_name_plural = "Doctor Profiles"
+
+class NurseProfile(models.Model):
+    """Hồ sơ y tá"""
+    DEPARTMENT_CHOICES = [
+        ('EMERGENCY', 'Emergency'),
+        ('ICU', 'Intensive Care Unit'),
+        ('PEDIATRICS', 'Pediatrics'),
+        ('CARDIOLOGY', 'Cardiology'),
+        ('ONCOLOGY', 'Oncology'),
+        ('NEUROLOGY', 'Neurology'),
+        ('ORTHOPEDICS', 'Orthopedics'),
+        ('GENERAL', 'General'),
+        ('SURGERY', 'Surgery'),
+        ('OBSTETRICS', 'Obstetrics'),
+        ('OTHER', 'Other'),
+    ]
+
+    NURSE_TYPE_CHOICES = [
+        ('RN', 'Registered Nurse'),
+        ('LPN', 'Licensed Practical Nurse'),
+        ('NP', 'Nurse Practitioner'),
+        ('CNA', 'Certified Nursing Assistant'),
+        ('SPECIALIST', 'Specialist Nurse'),
+        ('OTHER', 'Other'),
+    ]
+
+    SHIFT_CHOICES = [
+        ('MORNING', 'Morning Shift'),
+        ('AFTERNOON', 'Afternoon Shift'),
+        ('NIGHT', 'Night Shift'),
+        ('ROTATING', 'Rotating Shift'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='nurse_profile')
+    license_number = models.CharField(max_length=50, unique=True)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    nurse_type = models.CharField(max_length=20, choices=NURSE_TYPE_CHOICES, default='RN')
+    department = models.CharField(max_length=100, choices=DEPARTMENT_CHOICES)
+    specialization = models.CharField(max_length=100, blank=True, null=True)
+    years_of_experience = models.PositiveIntegerField(default=0)
+    education = models.TextField(blank=True, null=True)
+    certifications = models.TextField(blank=True, null=True)
+    shift_preference = models.CharField(max_length=20, choices=SHIFT_CHOICES, default='ROTATING')
+    languages_spoken = models.CharField(max_length=200, default='English')
+    supervisor = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='supervised_nurses')
+    profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} - {self.nurse_type} ({self.department})"
+
+    class Meta:
+        verbose_name = "Nurse Profile"
+        verbose_name_plural = "Nurse Profiles"
+
+class PharmacistProfile(models.Model):
+    """Hồ sơ dược sĩ"""
+    SPECIALIZATION_CHOICES = [
+        ('CLINICAL', 'Clinical Pharmacist'),
+        ('RETAIL', 'Retail Pharmacist'),
+        ('HOSPITAL', 'Hospital Pharmacist'),
+        ('RESEARCH', 'Research Pharmacist'),
+        ('INDUSTRIAL', 'Industrial Pharmacist'),
+        ('CONSULTANT', 'Consultant Pharmacist'),
+        ('ONCOLOGY', 'Oncology Pharmacist'),
+        ('PEDIATRIC', 'Pediatric Pharmacist'),
+        ('GERIATRIC', 'Geriatric Pharmacist'),
+        ('OTHER', 'Other'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='pharmacist_profile')
+    license_number = models.CharField(max_length=50, unique=True)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    specialization = models.CharField(max_length=50, choices=SPECIALIZATION_CHOICES, default='RETAIL')
+    years_of_experience = models.PositiveIntegerField(default=0)
+    education = models.TextField()
+    certifications = models.TextField(blank=True, null=True)
+    pharmacy_name = models.CharField(max_length=200, blank=True, null=True)
+    pharmacy_address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='pharmacies')
+    is_pharmacy_manager = models.BooleanField(default=False)
+    languages_spoken = models.CharField(max_length=200, default='English')
+    profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        pharmacy_info = f" at {self.pharmacy_name}" if self.pharmacy_name else ""
+        return f"{self.user.first_name} {self.user.last_name} - Pharmacist{pharmacy_info}"
+
+    class Meta:
+        verbose_name = "Pharmacist Profile"
+        verbose_name_plural = "Pharmacist Profiles"
+
+class InsuranceInformation(models.Model):
+    """Thông tin bảo hiểm"""
+    INSURANCE_TYPE_CHOICES = [
+        ('HEALTH', 'Health Insurance'),
+        ('DENTAL', 'Dental Insurance'),
+        ('VISION', 'Vision Insurance'),
+        ('LIFE', 'Life Insurance'),
+        ('DISABILITY', 'Disability Insurance'),
+        ('OTHER', 'Other'),
+    ]
+
+    COVERAGE_LEVEL_CHOICES = [
+        ('BASIC', 'Basic'),
+        ('STANDARD', 'Standard'),
+        ('PREMIUM', 'Premium'),
+        ('COMPREHENSIVE', 'Comprehensive'),
+        ('CUSTOM', 'Custom'),
+    ]
+
+    provider = models.ForeignKey('InsuranceProviderProfile', on_delete=models.CASCADE, related_name='insurance_plans')
+    insurance_type = models.CharField(max_length=20, choices=INSURANCE_TYPE_CHOICES, default='HEALTH')
+    policy_number = models.CharField(max_length=100)
+    group_number = models.CharField(max_length=100, blank=True, null=True)
+    subscriber_name = models.CharField(max_length=200)
+    subscriber_relationship = models.CharField(max_length=50, default='SELF')
+    coverage_start_date = models.DateField()
+    coverage_end_date = models.DateField(null=True, blank=True)
+    coverage_level = models.CharField(max_length=20, choices=COVERAGE_LEVEL_CHOICES, default='STANDARD')
+    deductible = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    copay = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    coinsurance_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Percentage as decimal (e.g., 0.20 for 20%)")
+    max_out_of_pocket = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.subscriber_name} - {self.provider.company_name} ({self.policy_number})"
+
+    class Meta:
+        verbose_name = "Insurance Information"
+        verbose_name_plural = "Insurance Information"
+        unique_together = ['provider', 'policy_number']
+
+class InsuranceProviderProfile(models.Model):
+    """Hồ sơ nhà cung cấp bảo hiểm"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='insurance_provider_profile')
+    company_name = models.CharField(max_length=200)
+    provider_id = models.CharField(max_length=100, unique=True)
+    contact_person = models.CharField(max_length=200)
+    contact_email = models.EmailField()
+    contact_phone = models.CharField(max_length=20)
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='insurance_providers')
+    website = models.URLField(blank=True, null=True)
+    established_year = models.PositiveIntegerField(null=True, blank=True)
+    service_areas = models.TextField(help_text="Comma-separated list of service areas")
+    available_plans = models.TextField(help_text="Description of available insurance plans")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.company_name} ({self.provider_id})"
+
+    class Meta:
+        verbose_name = "Insurance Provider Profile"
+        verbose_name_plural = "Insurance Provider Profiles"
+
+class LabTechnicianProfile(models.Model):
+    """Hồ sơ kỹ thuật viên phòng thí nghiệm"""
+    SPECIALIZATION_CHOICES = [
+        ('HEMATOLOGY', 'Hematology'),
+        ('MICROBIOLOGY', 'Microbiology'),
+        ('BIOCHEMISTRY', 'Biochemistry'),
+        ('IMMUNOLOGY', 'Immunology'),
+        ('PATHOLOGY', 'Pathology'),
+        ('TOXICOLOGY', 'Toxicology'),
+        ('GENETICS', 'Genetics'),
+        ('GENERAL', 'General Laboratory'),
+        ('OTHER', 'Other'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='lab_technician_profile')
+    license_number = models.CharField(max_length=50, unique=True)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    specialization = models.CharField(max_length=50, choices=SPECIALIZATION_CHOICES, default='GENERAL')
+    years_of_experience = models.PositiveIntegerField(default=0)
+    education = models.TextField()
+    certifications = models.TextField(blank=True, null=True)
+    laboratory_name = models.CharField(max_length=200)
+    laboratory_address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='laboratories')
+    supervisor = models.CharField(max_length=200, blank=True, null=True)
+    equipment_expertise = models.TextField(blank=True, null=True, help_text="List of laboratory equipment the technician is proficient with")
+    profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} - Lab Technician ({self.specialization})"
+
+    class Meta:
+        verbose_name = "Lab Technician Profile"
+        verbose_name_plural = "Lab Technician Profiles"
+
+class AdminProfile(models.Model):
+    """Hồ sơ quản trị viên"""
+    ADMIN_TYPE_CHOICES = [
+        ('SYSTEM', 'System Administrator'),
+        ('HOSPITAL', 'Hospital Administrator'),
+        ('DEPARTMENT', 'Department Administrator'),
+        ('CLINIC', 'Clinic Administrator'),
+        ('BILLING', 'Billing Administrator'),
+        ('HR', 'Human Resources Administrator'),
+        ('OTHER', 'Other'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
+    admin_type = models.CharField(max_length=20, choices=ADMIN_TYPE_CHOICES, default='HOSPITAL')
+    department = models.CharField(max_length=100, blank=True, null=True)
+    position = models.CharField(max_length=100)
+    employee_id = models.CharField(max_length=50, unique=True)
+    access_level = models.PositiveIntegerField(default=1, help_text="1-5, with 5 being highest access")
+    responsibilities = models.TextField(blank=True, null=True)
+    supervisor = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='supervised_admins')
+    profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name} - {self.admin_type} Administrator"
+
+    class Meta:
+        verbose_name = "Administrator Profile"
+        verbose_name_plural = "Administrator Profiles"
+
+class UserPreference(models.Model):
+    """Tùy chọn của người dùng"""
+    THEME_CHOICES = [
+        ('LIGHT', 'Light'),
+        ('DARK', 'Dark'),
+        ('SYSTEM', 'System Default'),
+    ]
+
+    LANGUAGE_CHOICES = [
+        ('EN', 'English'),
+        ('ES', 'Spanish'),
+        ('FR', 'French'),
+        ('DE', 'German'),
+        ('ZH', 'Chinese'),
+        ('JA', 'Japanese'),
+        ('AR', 'Arabic'),
+        ('RU', 'Russian'),
+        ('PT', 'Portuguese'),
+        ('VI', 'Vietnamese'),
+    ]
+
+    NOTIFICATION_FREQUENCY_CHOICES = [
+        ('IMMEDIATELY', 'Immediately'),
+        ('DAILY', 'Daily Digest'),
+        ('WEEKLY', 'Weekly Digest'),
+        ('NONE', 'No Notifications'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    theme = models.CharField(max_length=10, choices=THEME_CHOICES, default='SYSTEM')
+    language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default='EN')
+    timezone = models.CharField(max_length=50, default='UTC')
+    date_format = models.CharField(max_length=20, default='MM/DD/YYYY')
+    time_format = models.CharField(max_length=10, default='12h')
+    email_notifications = models.BooleanField(default=True)
+    sms_notifications = models.BooleanField(default=False)
+    push_notifications = models.BooleanField(default=True)
+    notification_frequency = models.CharField(max_length=20, choices=NOTIFICATION_FREQUENCY_CHOICES, default='IMMEDIATELY')
+    appointment_reminders = models.BooleanField(default=True)
+    medication_reminders = models.BooleanField(default=True)
+    newsletter_subscription = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} - Preferences"
+
+    class Meta:
+        verbose_name = "User Preference"
+        verbose_name_plural = "User Preferences"
+
+class UserActivity(models.Model):
+    """Hoạt động của người dùng"""
+    ACTIVITY_TYPE_CHOICES = [
+        ('LOGIN', 'Login'),
+        ('LOGOUT', 'Logout'),
+        ('PASSWORD_CHANGE', 'Password Change'),
+        ('PROFILE_UPDATE', 'Profile Update'),
+        ('APPOINTMENT_BOOK', 'Appointment Booking'),
+        ('APPOINTMENT_CANCEL', 'Appointment Cancellation'),
+        ('PRESCRIPTION_VIEW', 'Prescription View'),
+        ('MEDICAL_RECORD_VIEW', 'Medical Record View'),
+        ('PAYMENT', 'Payment'),
+        ('OTHER', 'Other'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    activity_type = models.CharField(max_length=30, choices=ACTIVITY_TYPE_CHOICES)
+    description = models.TextField(blank=True, null=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, null=True)
+    device_info = models.CharField(max_length=200, blank=True, null=True)
+    location = models.CharField(max_length=200, blank=True, null=True)
+    status = models.CharField(max_length=20, default='SUCCESS')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.activity_type} at {self.created_at}"
+
+    class Meta:
+        verbose_name = "User Activity"
+        verbose_name_plural = "User Activities"
+        ordering = ['-created_at']
+
+class UserSession(models.Model):
+    """Phiên làm việc của người dùng"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    session_token = models.CharField(max_length=255, unique=True)
+    refresh_token = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, null=True)
+    device_info = models.CharField(max_length=200, blank=True, null=True)
+    location = models.CharField(max_length=200, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        status = "Active" if self.is_active else "Expired"
+        return f"{self.user.email} - {status} Session from {self.created_at}"
+
+    def is_expired(self):
+        """Kiểm tra xem phiên làm việc đã hết hạn chưa"""
+        return timezone.now() > self.expires_at
+
+    def invalidate(self):
+        """Vô hiệu hóa phiên làm việc"""
+        self.is_active = False
+        self.save()
+
+    class Meta:
+        verbose_name = "User Session"
+        verbose_name_plural = "User Sessions"
+        ordering = ['-created_at']
