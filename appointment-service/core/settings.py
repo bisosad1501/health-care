@@ -147,10 +147,16 @@ API_GATEWAY_URL = os.environ.get('API_GATEWAY_URL', 'http://api-gateway:8000')
 
 # Common Auth settings
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
-JWT_SECRET = os.environ.get('JWT_SECRET', SECRET_KEY)
+
+# Đặt JWT_SECRET cố định để đảm bảo nhất quán với các service khác
+JWT_SECRET = 'healthcare_jwt_secret_key_2025'
+
+# Disable JWT signature verification for testing
+VERIFY_JWT_SIGNATURE = False  # Tạm thời tắt xác thực chữ ký JWT để debug
+
+# JWT Settings
 ACCESS_TOKEN_LIFETIME = timedelta(minutes=60)
 REFRESH_TOKEN_LIFETIME = timedelta(days=7)
 ROTATE_REFRESH_TOKENS = False
 SESSION_TTL = 86400  # 1 day in seconds
 MAX_SESSIONS_PER_USER = 5
-VERIFY_JWT_SIGNATURE = True

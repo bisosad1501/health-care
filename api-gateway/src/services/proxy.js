@@ -13,37 +13,43 @@ const createServiceProxy = (serviceName, serviceUrl, options = {}) => {
     target: serviceUrl,
     changeOrigin: true,
     pathRewrite: options.pathRewrite || null,
-    // Increase timeout
-    timeout: 30000,
-    proxyTimeout: 30000,
-    // Handle request body
+    // Tăng thời gian timeout
+    timeout: 60000,
+    proxyTimeout: 60000,
+    // Quan trọng: Đảm bảo token và các headers được chuyển tiếp
     onProxyReq: (proxyReq, req, res) => {
-      // Log the request
+      // Log thông tin request
       console.log(`[${serviceName.toUpperCase()}] ${req.method} ${req.originalUrl}`);
-      // Log the target URL
       console.log(`[${serviceName.toUpperCase()}] Target URL: ${serviceUrl}${req.url}`);
-      // Log headers
-      console.log(`[${serviceName.toUpperCase()}] Headers: ${JSON.stringify(req.headers)}`);
+      
+      // QUAN TRỌNG: Luôn chuyển tiếp Authorization header nguyên vẹn
+      if (req.headers.authorization) {
+        console.log(`[${serviceName.toUpperCase()}] Forwarding Authorization header`);
+      }
 
-      // Chuyển tiếp thông tin người dùng từ token
+      // Xóa headers không cần thiết để tránh xung đột
+      proxyReq.removeHeader('X-User-ID');
+      proxyReq.removeHeader('X-User-Role');
+      proxyReq.removeHeader('X-User-Email');
+      proxyReq.removeHeader('X-User-First-Name');
+      proxyReq.removeHeader('X-User-Last-Name');
+
+      // Thêm thông tin người dùng từ token vào header
       if (req.user) {
-        // Lấy thông tin người dùng từ User Service
-        const axios = require('axios');
-        const config = require('../config');
-
-        // Thêm user_id vào header
-        if (req.user.user_id) {
-          proxyReq.setHeader('X-User-ID', req.user.user_id.toString());
-        } else if (req.user.id) {
-          proxyReq.setHeader('X-User-ID', req.user.id.toString());
+        if (req.user.user_id || req.user.id) {
+          proxyReq.setHeader('X-User-ID', (req.user.user_id || req.user.id).toString());
+          console.log(`[${serviceName.toUpperCase()}] Setting X-User-ID: ${req.user.user_id || req.user.id}`);
         }
 
-        // Thêm email vào header nếu có
+        if (req.user.role) {
+          proxyReq.setHeader('X-User-Role', req.user.role);
+          console.log(`[${serviceName.toUpperCase()}] Setting X-User-Role: ${req.user.role}`);
+        }
+
         if (req.user.email) {
           proxyReq.setHeader('X-User-Email', req.user.email);
         }
 
-        // Thêm first_name và last_name vào header nếu có
         if (req.user.first_name) {
           proxyReq.setHeader('X-User-First-Name', req.user.first_name);
         }
@@ -52,38 +58,31 @@ const createServiceProxy = (serviceName, serviceUrl, options = {}) => {
           proxyReq.setHeader('X-User-Last-Name', req.user.last_name);
         }
 
-        // Thêm token gốc vào header
-        if (req.headers.authorization) {
-          proxyReq.setHeader('X-Original-Authorization', req.headers.authorization);
-
-          // Thêm thông tin role dựa vào user_id
-          // Lấy role từ thông tin user đã được xác thực
-          if (req.user.role) {
-            proxyReq.setHeader('X-User-Role', req.user.role);
-            console.log(`[${serviceName.toUpperCase()}] Setting role ${req.user.role} for user_id ${req.user.id || req.user.user_id}`);
-          }
-        }
-
-        // Log thông tin người dùng
-        console.log(`[${serviceName.toUpperCase()}] User info:`, req.user);
+        // Debug: Log thông tin người dùng
+        console.log(`[${serviceName.toUpperCase()}] User info:`, JSON.stringify(req.user));
+      } else {
+        console.log(`[${serviceName.toUpperCase()}] No user info in request`);
       }
 
-      // Handle request body
+      // Xử lý request body nếu có
       if (req.body && Object.keys(req.body).length > 0) {
         const bodyData = JSON.stringify(req.body);
         proxyReq.setHeader('Content-Type', 'application/json');
         proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-        // Write body data to the proxy request
         proxyReq.write(bodyData);
       }
     },
+    onProxyRes: (proxyRes, req, res) => {
+      // Log response status
+      console.log(`[${serviceName.toUpperCase()}] Response Status: ${proxyRes.statusCode}`);
+    },
     onError: (err, req, res) => {
-      // Handle proxy error
+      // Xử lý lỗi proxy
       console.error(`[${serviceName.toUpperCase()}] Proxy Error:`, err);
       res.status(500).json({
         status: 'error',
-        message: `Service ${serviceName} is unavailable`,
-        error: err.message
+        message: `Service ${serviceName} is unavailable: ${err.message}`,
+        code: 'SERVICE_UNAVAILABLE'
       });
     }
   });
@@ -92,7 +91,6 @@ const createServiceProxy = (serviceName, serviceUrl, options = {}) => {
 // Create proxies for all services
 const userServiceProxy = createServiceProxy('users', config.services.user);
 
-// Direct proxy for auth service
 const authServiceProxy = createProxyMiddleware({
   target: config.services.user,
   changeOrigin: true,

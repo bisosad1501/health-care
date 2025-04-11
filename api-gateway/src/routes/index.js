@@ -80,7 +80,80 @@ router.use('/api/admin', userServiceProxy);
 router.use('/api/insurance-information', userServiceProxy);
 router.use('/api/insurance-providers', verifyToken, userServiceProxy);
 
+// Direct test endpoint for debugging
+router.get('/api/appointments/test', verifyToken, (req, res, next) => {
+  console.log('[DEBUG] Forwarding to test endpoint');
+  console.log('User from token:', req.user);
+
+  // Forward directly to Appointment Service
+  const axios = require('axios');
+  const appointmentServiceUrl = config.services.appointment;
+
+  // Add headers from token
+  const headers = {
+    'Authorization': req.headers.authorization,
+    'X-User-ID': req.user.user_id || req.user.id,
+    'X-User-Role': req.user.role,
+    'X-User-Email': req.user.email
+  };
+
+  // Call the service directly
+  axios.get(`${appointmentServiceUrl}/api/test/`, { headers })
+    .then(response => {
+      res.status(200).json(response.data);
+    })
+    .catch(error => {
+      console.error('Error calling test endpoint:', error.message);
+      res.status(error.response?.status || 500).json({
+        error: error.message,
+        details: error.response?.data
+      });
+    });
+});
+
+// Direct access to patient-appointments endpoint
+router.get('/api/direct/patient-appointments', verifyToken, (req, res) => {
+  console.log('[DEBUG] Direct access to patient-appointments');
+  console.log('User from token:', req.user);
+
+  // Forward directly to Appointment Service
+  const axios = require('axios');
+  const appointmentServiceUrl = config.services.appointment;
+
+  // Add headers from token
+  const headers = {
+    'Authorization': req.headers.authorization,
+    'X-User-ID': req.user.user_id || req.user.id,
+    'X-User-Role': req.user.role,
+    'X-User-Email': req.user.email,
+    'X-User-First-Name': req.user.first_name || '',
+    'X-User-Last-Name': req.user.last_name || ''
+  };
+
+  console.log('Sending request to:', `${appointmentServiceUrl}/api/appointments/patient-appointments/`);
+  console.log('With headers:', headers);
+
+  // Call the service directly
+  axios.get(`${appointmentServiceUrl}/api/appointments/patient-appointments/`, { headers })
+    .then(response => {
+      console.log('Response received:', response.status);
+      res.status(200).json(response.data);
+    })
+    .catch(error => {
+      console.error('Error calling patient-appointments endpoint:', error.message);
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+      }
+      res.status(error.response?.status || 500).json({
+        error: error.message,
+        details: error.response?.data
+      });
+    });
+});
+
 // Appointment Service routes
+router.use('/api/appointments/patient-appointments', verifyToken, appointmentServiceProxy);
 router.use('/api/appointments', verifyToken, appointmentServiceProxy);
 router.use('/api/doctor-availabilities', verifyToken, appointmentServiceProxy);
 router.use('/api/time-slots', verifyToken, appointmentServiceProxy);
@@ -115,7 +188,7 @@ router.use('/api/pharmacy', verifyToken, (req, res, next) => {
 });
 
 // Billing Service routes
-router.use('/api/billing', verifyToken, (req, res, next) => {
+router.use('/api/invoices', verifyToken, (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     console.log(`[BILLING] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
@@ -129,6 +202,44 @@ router.use('/api/billing', verifyToken, (req, res, next) => {
     req.headers['X-User-First-Name'] = req.user.first_name || '';
     req.headers['X-User-Last-Name'] = req.user.last_name || '';
     console.log(`[BILLING] User info: ${JSON.stringify(req.user)}`);
+  }
+
+  // Forward the request to the billing service
+  billingServiceProxy(req, res, next);
+});
+
+// Invoice Items routes (part of Billing Service)
+router.use('/api/invoice-items', verifyToken, (req, res, next) => {
+  // Add user role to headers
+  if (req.user && req.user.role) {
+    req.headers['X-User-Role'] = req.user.role;
+  }
+
+  // Add user info to headers
+  if (req.user) {
+    req.headers['X-User-ID'] = req.user.user_id;
+    req.headers['X-User-Email'] = req.user.email;
+    req.headers['X-User-First-Name'] = req.user.first_name || '';
+    req.headers['X-User-Last-Name'] = req.user.last_name || '';
+  }
+
+  // Forward the request to the billing service
+  billingServiceProxy(req, res, next);
+});
+
+// Payments routes (part of Billing Service)
+router.use('/api/payments', verifyToken, (req, res, next) => {
+  // Add user role to headers
+  if (req.user && req.user.role) {
+    req.headers['X-User-Role'] = req.user.role;
+  }
+
+  // Add user info to headers
+  if (req.user) {
+    req.headers['X-User-ID'] = req.user.user_id;
+    req.headers['X-User-Email'] = req.user.email;
+    req.headers['X-User-First-Name'] = req.user.first_name || '';
+    req.headers['X-User-Last-Name'] = req.user.last_name || '';
   }
 
   // Forward the request to the billing service

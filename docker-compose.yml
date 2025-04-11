@@ -73,7 +73,7 @@ services:
 
   # User Service (Authentication, Authorization & User Management)
   user-service:
-    build: 
+    build:
       context: .
       dockerfile: ./user-service/Dockerfile
     depends_on:
@@ -84,6 +84,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=your_secret_key
+      - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/healthcare_user
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SUPERUSER_EMAIL=admin@example.com
@@ -107,6 +108,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=your_secret_key
+      - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/healthcare_medical
       - REDIS_URL=redis://redis:6379/0
       - API_GATEWAY_URL=http://api-gateway:4000
@@ -131,6 +133,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=your_secret_key
+      - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_NAME=healthcare_appointments
       - DATABASE_USER=postgres
       - DATABASE_PASSWORD=postgres
@@ -158,6 +161,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=your_secret_key
+      - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_NAME=healthcare_billing
       - DATABASE_USER=postgres
       - DATABASE_PASSWORD=postgres
@@ -173,7 +177,7 @@ services:
     volumes:
       - ./billing-service:/app
       - ./common-auth:/app/common-auth
-      
+
   # Pharmacy Service
   pharmacy-service:
     build:
@@ -187,6 +191,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=your_secret_key
+      - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/healthcare_pharmacy
       - API_GATEWAY_URL=http://api-gateway:4000
       - USER_SERVICE_URL=http://user-service:8000
@@ -210,6 +215,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=your_secret_key
+      - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_NAME=healthcare_notification
       - DATABASE_USER=postgres
       - DATABASE_PASSWORD=postgres
@@ -245,6 +251,7 @@ services:
     environment:
       - DEBUG=True
       - SECRET_KEY=your_secret_key
+      - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_NAME=healthcare_laboratory
       - DATABASE_USER=postgres
       - DATABASE_PASSWORD=postgres

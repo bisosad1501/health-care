@@ -47,8 +47,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         queryset = Invoice.objects.all().order_by('-created_at')
 
         # Filter by patient_id if the user is a patient
-        if self.request.user and self.request.user.get('role') == 'PATIENT':
-            queryset = queryset.filter(patient_id=self.request.user.get('id'))
+        if self.request.user and hasattr(self.request.user, 'role') and self.request.user.role == 'PATIENT':
+            queryset = queryset.filter(patient_id=self.request.user.id)
 
         # Filter by status if provided
         status_param = self.request.query_params.get('status', None)
@@ -57,7 +57,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         # Filter by patient_id if provided (for admin/staff)
         patient_id = self.request.query_params.get('patient_id', None)
-        if patient_id and (self.request.user.get('role') in ['ADMIN', 'BILLING_STAFF', 'INSURANCE_PROVIDER']):
+        if patient_id and hasattr(self.request.user, 'role') and self.request.user.role in ['ADMIN', 'BILLING_STAFF', 'INSURANCE_PROVIDER']:
             queryset = queryset.filter(patient_id=patient_id)
 
         return queryset
@@ -179,8 +179,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(invoice_id=invoice_id)
 
         # Filter by patient_id if the user is a patient
-        if self.request.user and self.request.user.get('role') == 'PATIENT':
-            queryset = queryset.filter(invoice__patient_id=self.request.user.get('id'))
+        if self.request.user and hasattr(self.request.user, 'role') and self.request.user.role == 'PATIENT':
+            queryset = queryset.filter(invoice__patient_id=self.request.user.id)
 
         return queryset
 
@@ -209,12 +209,12 @@ class InsuranceClaimViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(invoice_id=invoice_id)
 
         # Filter by patient_id if the user is a patient
-        if self.request.user and self.request.user.get('role') == 'PATIENT':
-            queryset = queryset.filter(invoice__patient_id=self.request.user.get('id'))
+        if self.request.user and hasattr(self.request.user, 'role') and self.request.user.role == 'PATIENT':
+            queryset = queryset.filter(invoice__patient_id=self.request.user.id)
 
         # Filter by insurance_provider_id if the user is an insurance provider
-        if self.request.user and self.request.user.get('role') == 'INSURANCE_PROVIDER':
-            queryset = queryset.filter(insurance_provider_id=self.request.user.get('id'))
+        if self.request.user and hasattr(self.request.user, 'role') and self.request.user.role == 'INSURANCE_PROVIDER':
+            queryset = queryset.filter(insurance_provider_id=self.request.user.id)
 
         return queryset
 

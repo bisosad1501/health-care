@@ -1,6 +1,6 @@
 from rest_framework import viewsets, generics, status, filters
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -19,8 +19,32 @@ from .permissions import (
     CanDeleteAppointment, CanManageDoctorSchedule, IsAdmin
 )
 from .authentication import CustomJWTAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 logger = logging.getLogger(__name__)
+
+# Endpoint test đơn giản để kiểm tra xác thực
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  # Yêu cầu xác thực nhưng không cần kiểm tra vai trò
+def test_endpoint(request):
+    """
+    Simple test endpoint to verify authentication is working.
+    """
+    # Log thông tin user để debug
+    user = request.user
+    user_id = getattr(user, 'id', None) or getattr(user, 'user_id', None)
+    user_role = getattr(user, 'role', None)
+    
+    logger.info(f"Test endpoint accessed by user: {user_id}, role: {user_role}")
+    
+    # Trả về thông tin user và một thông báo thành công đơn giản
+    return Response({
+        "message": "Authentication successful!",
+        "user_id": user_id,
+        "role": user_role,
+        "email": getattr(user, 'email', None),
+        "name": f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip()
+    })
 
 
 class DoctorAvailabilityViewSet(viewsets.ModelViewSet):
@@ -374,6 +398,46 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         
         # Order by date and time
         queryset = queryset.order_by('appointment_date', 'start_time')
+        
+        # Paginate results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+        
+    @action(detail=False, methods=['get'])
+    def patient_appointments(self, request):
+        """
+        Get all appointments for the current patient.
+        This endpoint specifically addresses the API call to /api/appointments/patient-appointments/
+        """
+        user_role = getattr(self.request.user, 'role', None)
+        user_id = getattr(self.request.user, 'id', None)
+        
+        # Log user information for debugging
+        logger.info(f"Patient appointments requested by user: {user_id}, role: {user_role}")
+        
+        # Only allow patients to use this endpoint
+        if user_role != 'PATIENT':
+            logger.warning(f"Non-patient user {user_id} tried to access patient appointments")
+            return Response(
+                {"error": "Only patients can access this endpoint"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get all appointments for this patient
+        queryset = Appointment.objects.filter(patient_id=user_id)
+        
+        # Allow filtering by status
+        appointment_status = request.query_params.get('status', None)
+        if appointment_status:
+            queryset = queryset.filter(status=appointment_status.upper())
+        
+        # Order by date (newest first) and time
+        queryset = queryset.order_by('-appointment_date', 'start_time')
         
         # Paginate results
         page = self.paginate_queryset(queryset)
