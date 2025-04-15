@@ -7,50 +7,50 @@ export default function LabTechCompletedTests() {
   const completedTests = [
     {
       id: 1,
-      patient: "Robert Davis",
-      patientId: "P-1008",
-      testType: "Complete Blood Count (CBC)",
-      doctor: "Dr. Sarah Johnson",
-      completedDate: "Today",
-      completedTime: "11:30 AM",
-      status: "Completed",
-      result: "Normal",
+      patient: "Nguyễn Văn An",
+      patientId: "BN-1008",
+      testType: "Công thức máu (CBC)",
+      doctor: "BS. Nguyễn Thị Hương",
+      completedDate: "Hôm nay",
+      completedTime: "11:30",
+      status: "Hoàn thành",
+      result: "Bình thường",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 2,
-      patient: "Jennifer Lee",
-      patientId: "P-1012",
-      testType: "Thyroid Function Test",
-      doctor: "Dr. Michael Chen",
-      completedDate: "Today",
-      completedTime: "09:45 AM",
-      status: "Completed",
-      result: "Abnormal",
+      patient: "Trần Thị Bình",
+      patientId: "BN-1012",
+      testType: "Xét nghiệm chức năng tuyến giáp",
+      doctor: "BS. Phạm Văn Đức",
+      completedDate: "Hôm nay",
+      completedTime: "09:45",
+      status: "Hoàn thành",
+      result: "Bất thường",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 3,
-      patient: "Michael Brown",
-      patientId: "P-1002",
-      testType: "Lipid Panel",
-      doctor: "Dr. Sarah Johnson",
-      completedDate: "Yesterday",
-      completedTime: "03:15 PM",
-      status: "Completed",
-      result: "Normal",
+      patient: "Phạm Văn Minh",
+      patientId: "BN-1002",
+      testType: "Xét nghiệm mỡ máu",
+      doctor: "BS. Nguyễn Thị Hương",
+      completedDate: "Hôm qua",
+      completedTime: "15:15",
+      status: "Hoàn thành",
+      result: "Bình thường",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 4,
-      patient: "Olivia Martinez",
-      patientId: "P-1005",
-      testType: "Urinalysis",
-      doctor: "Dr. Michael Chen",
-      completedDate: "Yesterday",
-      completedTime: "01:30 PM",
-      status: "Completed",
-      result: "Normal",
+      patient: "Hoàng Thị Mai",
+      patientId: "BN-1005",
+      testType: "Xét nghiệm nước tiểu",
+      doctor: "BS. Phạm Văn Đức",
+      completedDate: "Hôm qua",
+      completedTime: "13:30",
+      status: "Hoàn thành",
+      result: "Bình thường",
       avatar: "/placeholder.svg?height=40&width=40",
     },
   ]
@@ -64,7 +64,7 @@ export default function LabTechCompletedTests() {
         >
           <div className="flex items-start gap-4">
             <Avatar>
-              <AvatarImage src={test.avatar} alt={test.patient} />
+              <AvatarImage src={test.avatar || "/placeholder.svg"} alt={test.patient} />
               <AvatarFallback>
                 {test.patient
                   .split(" ")
@@ -94,9 +94,9 @@ export default function LabTechCompletedTests() {
           </div>
           <div className="mt-4 flex items-center justify-between md:mt-0 md:flex-col md:items-end">
             <Badge
-              variant={test.result === "Normal" ? "outline" : "secondary"}
+              variant={test.result === "Bình thường" ? "outline" : "secondary"}
               className={
-                test.result === "Normal"
+                test.result === "Bình thường"
                   ? "bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
                   : "bg-amber-50 text-amber-700 hover:bg-amber-50 hover:text-amber-700"
               }
@@ -106,11 +106,11 @@ export default function LabTechCompletedTests() {
             <div className="flex items-center gap-2 mt-2">
               <Button variant="outline" size="sm" className="gap-1">
                 <Download className="h-3.5 w-3.5" />
-                Export
+                Xuất
               </Button>
               <Button variant="outline" size="sm" className="gap-1">
                 <FileText className="h-3.5 w-3.5" />
-                Details
+                Chi tiết
               </Button>
               <Button variant="ghost" size="icon">
                 <MoreHorizontal className="h-4 w-4" />

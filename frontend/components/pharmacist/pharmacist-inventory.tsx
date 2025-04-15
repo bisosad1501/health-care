@@ -8,56 +8,56 @@ export default function PharmacistInventory() {
     {
       id: 1,
       name: "Lisinopril 10mg",
-      category: "Antihypertensive",
+      category: "Thuốc hạ huyết áp",
       currentStock: 120,
       minStock: 50,
       maxStock: 200,
-      expirationDate: "Dec 15, 2025",
-      status: "Normal",
+      expirationDate: "15/12/2025",
+      status: "Bình thường",
       stockPercentage: 60,
     },
     {
       id: 2,
       name: "Metformin 500mg",
-      category: "Antidiabetic",
+      category: "Thuốc tiểu đường",
       currentStock: 35,
       minStock: 40,
       maxStock: 150,
-      expirationDate: "Nov 30, 2025",
-      status: "Low",
+      expirationDate: "30/11/2025",
+      status: "Sắp hết",
       stockPercentage: 23,
     },
     {
       id: 3,
       name: "Atorvastatin 20mg",
-      category: "Statin",
+      category: "Thuốc hạ mỡ máu",
       currentStock: 85,
       minStock: 30,
       maxStock: 120,
-      expirationDate: "Jun 10, 2025",
-      status: "Expiring Soon",
+      expirationDate: "10/06/2025",
+      status: "Sắp hết hạn",
       stockPercentage: 71,
     },
     {
       id: 4,
       name: "Amoxicillin 500mg",
-      category: "Antibiotic",
+      category: "Kháng sinh",
       currentStock: 15,
       minStock: 30,
       maxStock: 100,
-      expirationDate: "Sep 20, 2025",
-      status: "Critical",
+      expirationDate: "20/09/2025",
+      status: "Nguy cấp",
       stockPercentage: 15,
     },
     {
       id: 5,
       name: "Ibuprofen 200mg",
-      category: "NSAID",
+      category: "Giảm đau",
       currentStock: 200,
       minStock: 50,
       maxStock: 200,
-      expirationDate: "Oct 05, 2025",
-      status: "Overstocked",
+      expirationDate: "05/10/2025",
+      status: "Dư thừa",
       stockPercentage: 100,
     },
   ]
@@ -72,16 +72,16 @@ export default function PharmacistInventory() {
                 <h4 className="font-medium">{item.name}</h4>
                 <Badge
                   variant={
-                    item.status === "Critical" || item.status === "Low"
+                    item.status === "Nguy cấp" || item.status === "Sắp hết"
                       ? "destructive"
-                      : item.status === "Expiring Soon"
+                      : item.status === "Sắp hết hạn"
                         ? "outline"
-                        : item.status === "Overstocked"
+                        : item.status === "Dư thừa"
                           ? "secondary"
                           : "default"
                   }
                   className={
-                    item.status === "Expiring Soon"
+                    item.status === "Sắp hết hạn"
                       ? "bg-amber-50 text-amber-700 hover:bg-amber-50 hover:text-amber-700"
                       : ""
                   }
@@ -92,31 +92,31 @@ export default function PharmacistInventory() {
               <p className="text-sm text-muted-foreground">{item.category}</p>
             </div>
             <div className="flex items-center gap-2">
-              {(item.status === "Critical" || item.status === "Low") && (
+              {(item.status === "Nguy cấp" || item.status === "Sắp hết") && (
                 <Button variant="outline" size="sm" className="gap-1">
                   <ShoppingCart className="h-3.5 w-3.5" />
-                  Order
+                  Đặt hàng
                 </Button>
               )}
               <Button variant="outline" size="sm" className="gap-1">
                 <Plus className="h-3.5 w-3.5" />
-                Add Stock
+                Thêm kho
               </Button>
             </div>
           </div>
           <div className="mt-4">
             <div className="mb-1 flex items-center justify-between text-sm">
               <span>
-                Stock: {item.currentStock} / {item.maxStock}
+                Tồn kho: {item.currentStock} / {item.maxStock}
               </span>
-              <span className="text-muted-foreground">Min: {item.minStock}</span>
+              <span className="text-muted-foreground">Tối thiểu: {item.minStock}</span>
             </div>
             <Progress
               value={item.stockPercentage}
               className={
-                item.status === "Critical" || item.status === "Low"
+                item.status === "Nguy cấp" || item.status === "Sắp hết"
                   ? "bg-red-100"
-                  : item.status === "Expiring Soon"
+                  : item.status === "Sắp hết hạn"
                     ? "bg-amber-100"
                     : "bg-gray-100"
               }
@@ -125,12 +125,12 @@ export default function PharmacistInventory() {
           <div className="mt-2 flex items-center justify-between text-sm">
             <div className="flex items-center gap-1 text-muted-foreground">
               <Calendar className="h-3.5 w-3.5" />
-              <span>Expires: {item.expirationDate}</span>
+              <span>Hết hạn: {item.expirationDate}</span>
             </div>
-            {item.status === "Expiring Soon" && (
+            {item.status === "Sắp hết hạn" && (
               <div className="flex items-center gap-1 text-amber-600">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Check expiration</span>
+                <span>Kiểm tra hạn sử dụng</span>
               </div>
             )}
           </div>

@@ -21,49 +21,49 @@ export default function AdminUsersList() {
   const users = [
     {
       id: "1",
-      name: "Dr. Sarah Johnson",
-      email: "sarah.johnson@example.com",
-      role: "DOCTOR",
-      specialty: "Cardiology",
+      name: "BS. Nguyễn Thị Hương",
+      email: "huong.nguyen@example.com",
+      role: "BÁC SĨ",
+      specialty: "Tim mạch",
       status: "active",
-      lastActive: "2 hours ago",
+      lastActive: "2 giờ trước",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "2",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      role: "PATIENT",
+      name: "Trần Văn Nam",
+      email: "nam.tran@example.com",
+      role: "BỆNH NHÂN",
       status: "active",
-      lastActive: "1 day ago",
+      lastActive: "1 ngày trước",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "3",
-      name: "Emma Wilson",
-      email: "emma.wilson@example.com",
-      role: "NURSE",
-      department: "Cardiology",
+      name: "Lê Thị Lan",
+      email: "lan.le@example.com",
+      role: "Y TÁ",
+      department: "Tim mạch",
       status: "active",
-      lastActive: "5 hours ago",
+      lastActive: "5 giờ trước",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "4",
-      name: "Michael Chen",
-      email: "michael.chen@example.com",
-      role: "PHARMACIST",
+      name: "Phạm Văn Minh",
+      email: "minh.pham@example.com",
+      role: "DƯỢC SĨ",
       status: "inactive",
-      lastActive: "2 weeks ago",
+      lastActive: "2 tuần trước",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "5",
-      name: "Lisa Brown",
-      email: "lisa.brown@example.com",
-      role: "ADMINISTRATOR",
+      name: "Hoàng Thị Mai",
+      email: "mai.hoang@example.com",
+      role: "QUẢN TRỊ VIÊN",
       status: "active",
-      lastActive: "Just now",
+      lastActive: "Vừa xong",
       avatar: "/placeholder.svg?height=40&width=40",
     },
   ]
@@ -82,7 +82,7 @@ export default function AdminUsersList() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search users..."
+            placeholder="Tìm kiếm người dùng..."
             className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -90,27 +90,27 @@ export default function AdminUsersList() {
         </div>
         <Button className="gap-1">
           <UserPlus className="h-4 w-4" />
-          Add User
+          Thêm người dùng
         </Button>
       </div>
 
       <div className="rounded-md border">
         <div className="grid grid-cols-12 border-b bg-muted/50 p-4 text-sm font-medium">
-          <div className="col-span-4">User</div>
-          <div className="col-span-3">Role</div>
-          <div className="col-span-2">Status</div>
-          <div className="col-span-2">Last Active</div>
-          <div className="col-span-1 text-right">Actions</div>
+          <div className="col-span-4">Người dùng</div>
+          <div className="col-span-3">Vai trò</div>
+          <div className="col-span-2">Trạng thái</div>
+          <div className="col-span-2">Hoạt động gần đây</div>
+          <div className="col-span-1 text-right">Thao tác</div>
         </div>
 
         {filteredUsers.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">No users found</div>
+          <div className="p-4 text-center text-sm text-muted-foreground">Không tìm thấy người dùng</div>
         ) : (
           filteredUsers.map((user) => (
             <div key={user.id} className="grid grid-cols-12 items-center border-b p-4 text-sm last:border-0">
               <div className="col-span-4 flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                   <AvatarFallback>
                     {user.name
                       .split(" ")
@@ -127,13 +127,13 @@ export default function AdminUsersList() {
                 <Badge
                   variant="outline"
                   className={
-                    user.role === "ADMINISTRATOR"
+                    user.role === "QUẢN TRỊ VIÊN"
                       ? "bg-purple-50 text-purple-700 hover:bg-purple-50 hover:text-purple-700"
-                      : user.role === "DOCTOR"
+                      : user.role === "BÁC SĨ"
                         ? "bg-blue-50 text-blue-700 hover:bg-blue-50 hover:text-blue-700"
-                        : user.role === "NURSE"
+                        : user.role === "Y TÁ"
                           ? "bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
-                          : user.role === "PHARMACIST"
+                          : user.role === "DƯỢC SĨ"
                             ? "bg-amber-50 text-amber-700 hover:bg-amber-50 hover:text-amber-700"
                             : "bg-gray-50 text-gray-700 hover:bg-gray-50 hover:text-gray-700"
                   }
@@ -152,7 +152,7 @@ export default function AdminUsersList() {
                       : "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700"
                   }
                 >
-                  {user.status}
+                  {user.status === "active" ? "Hoạt động" : "Không hoạt động"}
                 </Badge>
               </div>
               <div className="col-span-2 text-muted-foreground">{user.lastActive}</div>
@@ -161,24 +161,24 @@ export default function AdminUsersList() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
                       <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">Thao tác</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
                       <Edit className="mr-2 h-4 w-4" />
-                      Edit
+                      Chỉnh sửa
                     </DropdownMenuItem>
                     <DropdownMenuItem>
                       <Shield className="mr-2 h-4 w-4" />
-                      Permissions
+                      Quyền hạn
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-red-600">
                       <Trash className="mr-2 h-4 w-4" />
-                      Delete
+                      Xóa
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

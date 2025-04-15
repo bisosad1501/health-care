@@ -1,206 +1,325 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Activity,
-  Bell,
-  Clipboard,
-  FileText,
-  HeartPulse,
-  Home,
-  LogOut,
-  MessageSquare,
-  Settings,
-  User,
-  Users,
-} from "lucide-react"
-import NursePatientsList from "@/components/nurse/nurse-patients-list"
-import NurseTasks from "@/components/nurse/nurse-tasks"
+import { CalendarDays, ClipboardCheck, UserRound, Pill } from "lucide-react"
+import { DashboardStat, DashboardStatsGrid } from "@/components/dashboard/dashboard-stats"
+import { DashboardBarChart } from "@/components/dashboard/dashboard-chart"
+import { DashboardActivity } from "@/components/dashboard/dashboard-activity"
+import { DashboardTable } from "@/components/dashboard/dashboard-table"
+import { PageHeader } from "@/components/layout/page-header"
+
+// Dữ liệu mẫu cho biểu đồ
+const taskData = [
+  { day: "T2", completed: 12, pending: 3 },
+  { day: "T3", completed: 15, pending: 2 },
+  { day: "T4", completed: 10, pending: 5 },
+  { day: "T5", completed: 14, pending: 3 },
+  { day: "T6", completed: 16, pending: 2 },
+  { day: "T7", completed: 8, pending: 1 },
+  { day: "CN", completed: 5, pending: 0 },
+]
+
+// Dữ liệu mẫu cho bệnh nhân
+const patients = [
+  {
+    id: 1,
+    name: "Nguyễn Văn A",
+    room: "101",
+    age: 45,
+    condition: "Ổn định",
+    doctor: "BS. Trần Văn X",
+    nextCheck: "14:00",
+  },
+  {
+    id: 2,
+    name: "Trần Thị B",
+    room: "102",
+    age: 32,
+    condition: "Cần theo dõi",
+    doctor: "BS. Lê Thị Y",
+    nextCheck: "15:30",
+  },
+  {
+    id: 3,
+    name: "Lê Văn C",
+    room: "103",
+    age: 58,
+    condition: "Đang hồi phục",
+    doctor: "BS. Trần Văn X",
+    nextCheck: "16:00",
+  },
+  {
+    id: 4,
+    name: "Phạm Thị D",
+    room: "104",
+    age: 27,
+    condition: "Ổn định",
+    doctor: "BS. Nguyễn Thị Z",
+    nextCheck: "17:00",
+  },
+]
+
+// Dữ liệu mẫu cho nhiệm vụ
+const tasks = [
+  {
+    id: 1,
+    description: "Đo huyết áp cho bệnh nhân phòng 101",
+    priority: "Cao",
+    assignedBy: "BS. Trần Văn X",
+    dueTime: "14:00",
+    status: "Đang chờ",
+  },
+  {
+    id: 2,
+    description: "Thay băng cho bệnh nhân phòng 103",
+    priority: "Cao",
+    assignedBy: "BS. Trần Văn X",
+    dueTime: "14:30",
+    status: "Đang chờ",
+  },
+  {
+    id: 3,
+    description: "Cấp thuốc cho bệnh nhân phòng 102",
+    priority: "Trung bình",
+    assignedBy: "BS. Lê Thị Y",
+    dueTime: "15:00",
+    status: "Đang chờ",
+  },
+  {
+    id: 4,
+    description: "Lấy mẫu máu bệnh nhân phòng 104",
+    priority: "Trung bình",
+    assignedBy: "BS. Nguyễn Thị Z",
+    dueTime: "15:30",
+    status: "Đang chờ",
+  },
+]
+
+// Dữ liệu mẫu cho hoạt động gần đây
+const recentActivities = [
+  {
+    id: 1,
+    title: "Nhiệm vụ mới",
+    description: "BS. Trần Văn X đã giao nhiệm vụ mới",
+    timestamp: "Hôm nay, 10:30",
+    icon: <ClipboardCheck className="h-5 w-5" />,
+    status: "info",
+  },
+  {
+    id: 2,
+    title: "Bệnh nhân mới",
+    description: "Bệnh nhân Trần Thị B đã nhập viện",
+    timestamp: "Hôm qua, 15:45",
+    icon: <UserRound className="h-5 w-5" />,
+    status: "success",
+  },
+  {
+    id: 3,
+    title: "Thuốc đã cấp",
+    description: "Đã cấp thuốc cho bệnh nhân Lê Văn C",
+    timestamp: "2 ngày trước, 09:15",
+    icon: <Pill className="h-5 w-5" />,
+    status: "success",
+  },
+]
 
 export default function NurseDashboard() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <div className="flex items-center gap-2">
-            <HeartPulse className="h-6 w-6 text-teal-600" />
-            <h1 className="text-xl font-bold">Healthcare System</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Avatar>
-              <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Nurse" />
-              <AvatarFallback>NR</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </header>
-      <div className="flex flex-1">
-        <aside className="hidden w-64 border-r bg-background lg:block">
-          <div className="flex h-full flex-col gap-2 p-4">
-            <div className="flex items-center gap-2 px-2 py-4">
-              <Avatar>
-                <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Nurse" />
-                <AvatarFallback>NR</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">Emma Wilson</p>
-                <p className="text-xs text-muted-foreground">Nurse</p>
-              </div>
-            </div>
-            <nav className="grid gap-1 px-2 py-2">
-              <Link href="/dashboard/nurse">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Home className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/dashboard/nurse/patients">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Users className="h-4 w-4" />
-                  Patients
-                </Button>
-              </Link>
-              <Link href="/dashboard/nurse/tasks">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Clipboard className="h-4 w-4" />
-                  Tasks
-                </Button>
-              </Link>
-              <Link href="/dashboard/nurse/records">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <FileText className="h-4 w-4" />
-                  Medical Records
-                </Button>
-              </Link>
-              <Link href="/dashboard/nurse/vitals">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Activity className="h-4 w-4" />
-                  Vital Signs
-                </Button>
-              </Link>
-              <Link href="/dashboard/nurse/profile">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <User className="h-4 w-4" />
-                  Profile
-                </Button>
-              </Link>
-              <Link href="/dashboard/nurse/settings">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Button>
-              </Link>
-            </nav>
-            <div className="mt-auto">
-              <Link href="/login">
-                <Button variant="ghost" className="w-full justify-start gap-2 text-red-500 hover:text-red-500">
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </aside>
-        <main className="flex-1">
-          <div className="container py-6">
-            <h2 className="mb-6 text-3xl font-bold">Nurse Dashboard</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Assigned Patients</span>
-                    <Users className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">12</h3>
-                    <span className="ml-2 text-xs font-medium text-muted-foreground">Current shift</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Tasks</span>
-                    <Clipboard className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">8</h3>
-                    <span className="ml-2 text-xs font-medium text-amber-600">3 urgent</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Vital Signs Due</span>
-                    <Activity className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">5</h3>
-                    <span className="ml-2 text-xs font-medium text-red-600">Next: 30 min</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Messages</span>
-                    <MessageSquare className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">7</h3>
-                    <span className="ml-2 text-xs font-medium text-red-600">2 unread</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+    <div className="space-y-6">
+      <PageHeader title="Bảng điều khiển Y tá" description="Quản lý bệnh nhân, nhiệm vụ và lịch trình chăm sóc">
+        <Link href="/dashboard/nurse/patients">
+          <Button variant="outline" size="sm" className="h-9">
+            <UserRound className="mr-2 h-4 w-4" />
+            Bệnh nhân
+          </Button>
+        </Link>
+        <Link href="/dashboard/nurse/tasks">
+          <Button variant="outline" size="sm" className="h-9">
+            <ClipboardCheck className="mr-2 h-4 w-4" />
+            Nhiệm vụ
+          </Button>
+        </Link>
+        <Link href="/dashboard/nurse/schedule">
+          <Button variant="outline" size="sm" className="h-9">
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Lịch trình
+          </Button>
+        </Link>
+      </PageHeader>
 
-            <div className="mt-6">
-              <Tabs defaultValue="patients">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="patients">Assigned Patients</TabsTrigger>
-                  <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                </TabsList>
-                <TabsContent value="patients" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Assigned Patients</CardTitle>
-                      <CardDescription>Patients under your care for the current shift</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <NursePatientsList />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="tasks" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Tasks</CardTitle>
-                      <CardDescription>Your pending tasks and assignments</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <NurseTasks />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </main>
+      <DashboardStatsGrid>
+        <DashboardStat
+          title="Bệnh nhân đang chăm sóc"
+          value="18"
+          icon={<UserRound className="h-4 w-4" />}
+          trend={{ value: "+2 so với hôm qua", positive: true }}
+        />
+        <DashboardStat
+          title="Nhiệm vụ hôm nay"
+          value="24"
+          icon={<ClipboardCheck className="h-4 w-4" />}
+          description="12 đã hoàn thành"
+        />
+        <DashboardStat
+          title="Thuốc cần cấp phát"
+          value="32"
+          icon={<Pill className="h-4 w-4" />}
+          description="8 ưu tiên cao"
+        />
+        <DashboardStat
+          title="Giờ làm việc tuần này"
+          value="28/40"
+          icon={<CalendarDays className="h-4 w-4" />}
+          description="Còn 12 giờ"
+        />
+      </DashboardStatsGrid>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Suspense fallback={<div>Đang tải...</div>}>
+          <DashboardBarChart
+            title="Nhiệm vụ trong tuần"
+            description="Số lượng nhiệm vụ đã hoàn thành và đang chờ xử lý"
+            data={taskData}
+            categories={{
+              completed: {
+                label: "Đã hoàn thành",
+                color: "hsl(var(--chart-2))",
+              },
+              pending: {
+                label: "Đang chờ",
+                color: "hsl(var(--chart-5))",
+              },
+            }}
+            xAxisKey="day"
+          />
+        </Suspense>
+        <DashboardActivity
+          title="Hoạt động gần đây"
+          description="Các hoạt động và thông báo gần đây"
+          items={recentActivities}
+        />
       </div>
-      <footer className="border-t bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <p className="text-sm text-muted-foreground">© 2025 Healthcare System. All rights reserved.</p>
-        </div>
-      </footer>
+
+      <Tabs defaultValue="patients" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="patients">Bệnh nhân</TabsTrigger>
+          <TabsTrigger value="tasks">Nhiệm vụ</TabsTrigger>
+        </TabsList>
+        <TabsContent value="patients" className="space-y-4">
+          <DashboardTable
+            title="Danh sách bệnh nhân"
+            description="Bệnh nhân đang được chăm sóc và theo dõi"
+            columns={[
+              {
+                key: "name",
+                header: "Họ tên",
+                cell: (item: any) => <div className="font-medium">{item.name}</div>,
+              },
+              {
+                key: "room",
+                header: "Phòng",
+                cell: (item: any) => <div>{item.room}</div>,
+              },
+              {
+                key: "age",
+                header: "Tuổi",
+                cell: (item: any) => <div>{item.age}</div>,
+              },
+              {
+                key: "condition",
+                header: "Tình trạng",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.condition === "Ổn định"
+                        ? "bg-green-100 text-green-800"
+                        : item.condition === "Cần theo dõi"
+                          ? "bg-amber-100 text-amber-800"
+                          : item.condition === "Đang hồi phục"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {item.condition}
+                  </div>
+                ),
+              },
+              {
+                key: "doctor",
+                header: "Bác sĩ phụ trách",
+                cell: (item: any) => <div>{item.doctor}</div>,
+              },
+              {
+                key: "nextCheck",
+                header: "Kiểm tra tiếp theo",
+                cell: (item: any) => <div>{item.nextCheck}</div>,
+              },
+            ]}
+            data={patients}
+            keyField="id"
+          />
+        </TabsContent>
+        <TabsContent value="tasks" className="space-y-4">
+          <DashboardTable
+            title="Nhiệm vụ"
+            description="Danh sách nhiệm vụ cần hoàn thành hôm nay"
+            columns={[
+              {
+                key: "description",
+                header: "Mô tả",
+                cell: (item: any) => <div className="font-medium">{item.description}</div>,
+              },
+              {
+                key: "priority",
+                header: "Ưu tiên",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.priority === "Cao"
+                        ? "bg-red-100 text-red-800"
+                        : item.priority === "Trung bình"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {item.priority}
+                  </div>
+                ),
+              },
+              {
+                key: "assignedBy",
+                header: "Người giao",
+                cell: (item: any) => <div>{item.assignedBy}</div>,
+              },
+              {
+                key: "dueTime",
+                header: "Thời hạn",
+                cell: (item: any) => <div>{item.dueTime}</div>,
+              },
+              {
+                key: "status",
+                header: "Trạng thái",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.status === "Đã hoàn thành"
+                        ? "bg-green-100 text-green-800"
+                        : item.status === "Đang chờ"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {item.status}
+                  </div>
+                ),
+              },
+            ]}
+            data={tasks}
+            keyField="id"
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

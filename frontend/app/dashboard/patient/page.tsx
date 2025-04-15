@@ -1,238 +1,474 @@
-import Link from "next/link"
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { StatCard } from "@/components/ui/stat-card"
+import { PageHeader } from "@/components/layout/page-header"
+import { PageContainer } from "@/components/layout/page-container"
 import {
-  Activity,
   Calendar,
+  Clock,
   FileText,
-  HeartPulse,
-  Home,
-  LogOut,
-  MessageSquare,
+  PlusCircle,
   Pill,
-  Settings,
-  User,
+  FlaskRoundIcon as Flask,
+  CalendarClock,
+  Activity,
+  ChevronRight,
 } from "lucide-react"
 import PatientAppointments from "@/components/patient/patient-appointments"
-import PatientMedications from "@/components/patient/patient-medications"
-import PatientTestResults from "@/components/patient/patient-test-results"
+import { formatDate } from "@/lib/utils"
 
-export default function PatientDashboard() {
+export default function PatientDashboardPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [appointments, setAppointments] = useState<any[]>([])
+  const [prescriptions, setPrescriptions] = useState<any[]>([])
+  const [labTests, setLabTests] = useState<any[]>([])
+  const [stats, setStats] = useState({
+    upcomingAppointments: 0,
+    pendingPrescriptions: 0,
+    pendingLabTests: 0,
+    completedVisits: 0,
+  })
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      // Giả lập API call để lấy dữ liệu dashboard
+      setTimeout(() => {
+        // Giả lập dữ liệu cuộc hẹn
+        const mockAppointments = [
+          {
+            id: 1,
+            doctor: {
+              first_name: "Trần",
+              last_name: "Thị B",
+              specialty: "Thần kinh",
+            },
+            appointment_date: "2025-05-15",
+            start_time: "09:00",
+            end_time: "09:30",
+            reason: "Đau đầu, chóng mặt",
+            status: "CONFIRMED",
+            location: "Phòng khám chính",
+          },
+          {
+            id: 2,
+            doctor: {
+              first_name: "Nguyễn",
+              last_name: "Văn A",
+              specialty: "Tim mạch",
+            },
+            appointment_date: "2025-05-20",
+            start_time: "10:00",
+            end_time: "10:30",
+            reason: "Khám định kỳ",
+            status: "SCHEDULED",
+            location: "Phòng khám chính",
+          },
+        ]
+        setAppointments(mockAppointments)
+
+        // Giả lập dữ liệu đơn thuốc
+        const mockPrescriptions = [
+          {
+            id: 1,
+            doctor: {
+              first_name: "Lê",
+              last_name: "Văn C",
+              specialty: "Nội khoa",
+            },
+            prescription_date: "2025-05-01",
+            status: "DISPENSED",
+            medications: [
+              { name: "Paracetamol 500mg", dosage: "1 viên x 3 lần/ngày" },
+              { name: "Vitamin C 1000mg", dosage: "1 viên/ngày" },
+            ],
+          },
+          {
+            id: 2,
+            doctor: {
+              first_name: "Trần",
+              last_name: "Thị B",
+              specialty: "Thần kinh",
+            },
+            prescription_date: "2025-05-10",
+            status: "PENDING",
+            medications: [
+              { name: "Amitriptyline 25mg", dosage: "1 viên trước khi ngủ" },
+              { name: "Ibuprofen 400mg", dosage: "1 viên x 2 lần/ngày khi đau" },
+            ],
+          },
+        ]
+        setPrescriptions(mockPrescriptions)
+
+        // Giả lập dữ liệu xét nghiệm
+        const mockLabTests = [
+          {
+            id: 1,
+            test_name: "Công thức máu toàn phần",
+            ordered_at: "2025-05-05",
+            status: "COMPLETED",
+            doctor: {
+              first_name: "Nguyễn",
+              last_name: "Văn A",
+              specialty: "Tim mạch",
+            },
+          },
+          {
+            id: 2,
+            test_name: "Sinh hóa máu",
+            ordered_at: "2025-05-10",
+            status: "PENDING",
+            doctor: {
+              first_name: "Trần",
+              last_name: "Thị B",
+              specialty: "Thần kinh",
+            },
+          },
+        ]
+        setLabTests(mockLabTests)
+
+        // Cập nhật thống kê
+        setStats({
+          upcomingAppointments: mockAppointments.filter((a) => a.status === "CONFIRMED" || a.status === "SCHEDULED")
+            .length,
+          pendingPrescriptions: mockPrescriptions.filter((p) => p.status === "PENDING").length,
+          pendingLabTests: mockLabTests.filter((l) => l.status === "PENDING").length,
+          completedVisits: 15, // Giả lập số lần khám đã hoàn thành
+        })
+
+        setLoading(false)
+      }, 1000)
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+      setLoading(false)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "COMPLETED":
+        return <StatusBadge status="success" text="Đã hoàn thành" />
+      case "PENDING":
+        return <StatusBadge status="warning" text="Đang chờ" />
+      case "DISPENSED":
+        return <StatusBadge status="info" text="Đã phát thuốc" />
+      case "CONFIRMED":
+        return <StatusBadge status="success" text="Đã xác nhận" />
+      case "SCHEDULED":
+        return <StatusBadge status="info" text="Đã lên lịch" />
+      default:
+        return <StatusBadge status="default" text={status} />
+    }
+  }
+
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <div className="flex items-center gap-2">
-            <HeartPulse className="h-6 w-6 text-teal-600" />
-            <h1 className="text-xl font-bold">Healthcare System</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Avatar>
-              <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Patient" />
-              <AvatarFallback>JD</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </header>
-      <div className="flex flex-1">
-        <aside className="hidden w-64 border-r bg-background lg:block">
-          <div className="flex h-full flex-col gap-2 p-4">
-            <div className="flex items-center gap-2 px-2 py-4">
-              <Avatar>
-                <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Patient" />
-                <AvatarFallback>JD</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">John Doe</p>
-                <p className="text-xs text-muted-foreground">Patient</p>
-              </div>
-            </div>
-            <nav className="grid gap-1 px-2 py-2">
-              <Link href="/dashboard/patient">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Home className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/dashboard/patient/appointments">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Appointments
-                </Button>
-              </Link>
-              <Link href="/dashboard/patient/records">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <FileText className="h-4 w-4" />
-                  Medical Records
-                </Button>
-              </Link>
-              <Link href="/dashboard/patient/prescriptions">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Pill className="h-4 w-4" />
-                  Prescriptions
-                </Button>
-              </Link>
-              <Link href="/dashboard/patient/tests">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Activity className="h-4 w-4" />
-                  Test Results
-                </Button>
-              </Link>
-              <Link href="/dashboard/patient/profile">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <User className="h-4 w-4" />
-                  Profile
-                </Button>
-              </Link>
-              <Link href="/dashboard/patient/settings">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Button>
-              </Link>
-            </nav>
-            <div className="mt-auto">
-              <Link href="/login">
-                <Button variant="ghost" className="w-full justify-start gap-2 text-red-500 hover:text-red-500">
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </aside>
-        <main className="flex-1">
-          <div className="container py-6">
-            <h2 className="mb-6 text-3xl font-bold">Patient Dashboard</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Upcoming Appointments</span>
-                    <Calendar className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">2</h3>
-                    <span className="ml-2 text-xs font-medium text-muted-foreground">Next: Tomorrow, 10:00 AM</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Active Prescriptions</span>
-                    <Pill className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">3</h3>
-                    <span className="ml-2 text-xs font-medium text-muted-foreground">Refill in 5 days</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Recent Test Results</span>
-                    <Activity className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">1</h3>
-                    <span className="ml-2 text-xs font-medium text-green-600">New result available</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Messages</span>
-                    <MessageSquare className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">5</h3>
-                    <span className="ml-2 text-xs font-medium text-red-600">2 unread</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+    <PageContainer>
+      <PageHeader
+        title="Trang chủ"
+        description="Xin chào, chào mừng bạn đến với hệ thống quản lý y tế"
+        actions={
+          <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
+            <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+            <span>Đặt lịch hẹn</span>
+          </Button>
+        }
+      />
 
-            <div className="mt-6">
-              <Tabs defaultValue="appointments">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="appointments">Upcoming Appointments</TabsTrigger>
-                  <TabsTrigger value="medications">Current Medications</TabsTrigger>
-                  <TabsTrigger value="results">Recent Test Results</TabsTrigger>
-                </TabsList>
-                <TabsContent value="appointments" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Upcoming Appointments</CardTitle>
-                      <CardDescription>Your scheduled appointments for the next 30 days</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PatientAppointments />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="medications" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Current Medications</CardTitle>
-                      <CardDescription>Your active prescriptions and medication schedule</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PatientMedications />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="results" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Recent Test Results</CardTitle>
-                      <CardDescription>Your latest laboratory and diagnostic test results</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PatientTestResults />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </main>
-      </div>
-      <footer className="border-t bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <p className="text-sm text-muted-foreground">© 2025 Healthcare System. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
-  )
-}
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+      >
+        <motion.div variants={item}>
+          <StatCard
+            title="Lịch hẹn sắp tới"
+            value={stats.upcomingAppointments.toString()}
+            description="Cuộc hẹn đã xác nhận"
+            icon={<CalendarClock className="h-5 w-5" />}
+            trend="up"
+            trendValue="5%"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <StatCard
+            title="Đơn thuốc chờ xử lý"
+            value={stats.pendingPrescriptions.toString()}
+            description="Đơn thuốc cần lấy"
+            icon={<Pill className="h-5 w-5" />}
+            trend="neutral"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <StatCard
+            title="Xét nghiệm chờ xử lý"
+            value={stats.pendingLabTests.toString()}
+            description="Xét nghiệm cần thực hiện"
+            icon={<Flask className="h-5 w-5" />}
+            trend="neutral"
+          />
+        </motion.div>
+        <motion.div variants={item}>
+          <StatCard
+            title="Lần khám đã hoàn thành"
+            value={stats.completedVisits.toString()}
+            description="Tổng số lần khám"
+            icon={<Activity className="h-5 w-5" />}
+            trend="up"
+            trendValue="12%"
+          />
+        </motion.div>
+      </motion.div>
 
-function Bell(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-    </svg>
+      <Tabs defaultValue="appointments">
+        <TabsList className="mb-4">
+          <TabsTrigger value="appointments">Lịch hẹn sắp tới</TabsTrigger>
+          <TabsTrigger value="prescriptions">Đơn thuốc gần đây</TabsTrigger>
+          <TabsTrigger value="lab-tests">Xét nghiệm gần đây</TabsTrigger>
+        </TabsList>
+
+        {/* Không sử dụng AnimatePresence ở đây vì có nhiều phần tử con */}
+          <TabsContent key="appointments" value="appointments">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Lịch hẹn sắp tới</CardTitle>
+                      <CardDescription>Danh sách các cuộc hẹn sắp tới của bạn</CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/dashboard/patient/appointments")}
+                      className="group"
+                    >
+                      <span>Xem tất cả</span>
+                      <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <PatientAppointments appointments={appointments} />
+                  )}
+                </CardContent>
+                <CardFooter className="flex justify-center border-t pt-4">
+                  <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
+                    <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+                    <span>Đặt lịch hẹn mới</span>
+                  </Button>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          </TabsContent>
+
+          <TabsContent key="prescriptions" value="prescriptions">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Đơn thuốc gần đây</CardTitle>
+                      <CardDescription>Danh sách đơn thuốc gần đây của bạn</CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/dashboard/patient/prescriptions")}
+                      className="group"
+                    >
+                      <span>Xem tất cả</span>
+                      <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : prescriptions.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      <Pill className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                      <p>Bạn chưa có đơn thuốc nào</p>
+                    </motion.div>
+                  ) : (
+                    <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
+                      {prescriptions.map((prescription, index) => (
+                        <motion.div
+                          key={prescription.id}
+                          variants={item}
+                          whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                          className="flex flex-col rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">Đơn thuốc #{prescription.id}</h4>
+                              {getStatusBadge(prescription.status)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              BS. {prescription.doctor.first_name} {prescription.doctor.last_name} (
+                              {prescription.doctor.specialty})
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>{formatDate(prescription.prescription_date)}</span>
+                            </div>
+                            <div className="mt-2">
+                              {prescription.medications.map((med: any, index: number) => (
+                                <div key={index} className="text-sm">
+                                  <span className="font-medium">{med.name}</span>: {med.dosage}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="mt-4 flex items-center gap-2 md:mt-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/dashboard/patient/prescriptions/${prescription.id}`)}
+                              className="group"
+                            >
+                              <FileText className="mr-2 h-3.5 w-3.5" />
+                              <span>Chi tiết</span>
+                              <ChevronRight className="ml-1 h-3.5 w-3.5 opacity-0 transition-all group-hover:ml-2 group-hover:opacity-100" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </TabsContent>
+
+          <TabsContent key="lab-tests" value="lab-tests">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Xét nghiệm gần đây</CardTitle>
+                      <CardDescription>Danh sách xét nghiệm gần đây của bạn</CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/dashboard/patient/records")}
+                      className="group"
+                    >
+                      <span>Xem tất cả</span>
+                      <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : labTests.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      <Flask className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                      <p>Bạn chưa có xét nghiệm nào</p>
+                    </motion.div>
+                  ) : (
+                    <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
+                      {labTests.map((test, index) => (
+                        <motion.div
+                          key={test.id}
+                          variants={item}
+                          whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                          className="flex flex-col rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{test.test_name}</h4>
+                              {getStatusBadge(test.status)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              BS. {test.doctor.first_name} {test.doctor.last_name} ({test.doctor.specialty})
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>Yêu cầu: {formatDate(test.ordered_at)}</span>
+                            </div>
+                          </div>
+                          <div className="mt-4 flex items-center gap-2 md:mt-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/dashboard/patient/records/lab-tests/${test.id}`)}
+                              className="group"
+                            >
+                              <FileText className="mr-2 h-3.5 w-3.5" />
+                              <span>Xem kết quả</span>
+                              <ChevronRight className="ml-1 h-3.5 w-3.5 opacity-0 transition-all group-hover:ml-2 group-hover:opacity-100" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </TabsContent>
+        {/* Kết thúc các TabsContent */}
+      </Tabs>
+    </PageContainer>
   )
 }

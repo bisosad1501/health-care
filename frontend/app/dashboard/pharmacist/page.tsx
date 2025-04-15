@@ -1,221 +1,334 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Bell,
-  HeartPulse,
-  Home,
-  LogOut,
-  MessageSquare,
-  Package,
-  Pill,
-  Settings,
-  ShoppingCart,
-  User,
-} from "lucide-react"
-import PharmacistPrescriptions from "@/components/pharmacist/pharmacist-prescriptions"
-import PharmacistInventory from "@/components/pharmacist/pharmacist-inventory"
+import { Package, Pill, ShoppingCart } from "lucide-react"
+import { DashboardStat, DashboardStatsGrid } from "@/components/dashboard/dashboard-stats"
+import { DashboardBarChart, DashboardPieChart } from "@/components/dashboard/dashboard-chart"
+import { DashboardTable } from "@/components/dashboard/dashboard-table"
+import { PageHeader } from "@/components/layout/page-header"
+
+// Dữ liệu mẫu cho biểu đồ
+const dispensingData = [
+  { month: "T1", prescriptions: 120, otc: 80 },
+  { month: "T2", prescriptions: 140, otc: 90 },
+  { month: "T3", prescriptions: 130, otc: 85 },
+  { month: "T4", prescriptions: 150, otc: 95 },
+  { month: "T5", prescriptions: 160, otc: 100 },
+  { month: "T6", prescriptions: 170, otc: 110 },
+]
+
+const inventoryData = [
+  { name: "Đầy đủ", value: 65, color: "#0088FE" },
+  { name: "Sắp hết", value: 20, color: "#FFBB28" },
+  { name: "Hết hàng", value: 10, color: "#FF8042" },
+  { name: "Sắp hết hạn", value: 5, color: "#FF6B6B" },
+]
+
+// Dữ liệu mẫu cho đơn thuốc
+const prescriptions = [
+  {
+    id: 1,
+    patientName: "Nguyễn Văn A",
+    doctorName: "BS. Trần Văn X",
+    date: "12/04/2025",
+    status: "Chờ xử lý",
+    priority: "Cao",
+  },
+  {
+    id: 2,
+    patientName: "Trần Thị B",
+    doctorName: "BS. Lê Thị Y",
+    date: "12/04/2025",
+    status: "Chờ xử lý",
+    priority: "Trung bình",
+  },
+  {
+    id: 3,
+    patientName: "Lê Văn C",
+    doctorName: "BS. Trần Văn X",
+    date: "12/04/2025",
+    status: "Chờ xử lý",
+    priority: "Thấp",
+  },
+  {
+    id: 4,
+    patientName: "Phạm Thị D",
+    doctorName: "BS. Nguyễn Thị Z",
+    date: "11/04/2025",
+    status: "Đang chuẩn bị",
+    priority: "Cao",
+  },
+]
+
+// Dữ liệu mẫu cho kho thuốc
+const inventory = [
+  {
+    id: 1,
+    name: "Paracetamol 500mg",
+    category: "Giảm đau",
+    stock: 250,
+    minStock: 50,
+    expiryDate: "12/2026",
+    status: "Đầy đủ",
+  },
+  {
+    id: 2,
+    name: "Amoxicillin 250mg",
+    category: "Kháng sinh",
+    stock: 120,
+    minStock: 30,
+    expiryDate: "06/2026",
+    status: "Đầy đủ",
+  },
+  {
+    id: 3,
+    name: "Omeprazole 20mg",
+    category: "Dạ dày",
+    stock: 35,
+    minStock: 30,
+    expiryDate: "09/2025",
+    status: "Sắp hết",
+  },
+  {
+    id: 4,
+    name: "Loratadine 10mg",
+    category: "Kháng dị ứng",
+    stock: 15,
+    minStock: 25,
+    expiryDate: "03/2026",
+    status: "Sắp hết",
+  },
+  {
+    id: 5,
+    name: "Ibuprofen 400mg",
+    category: "Giảm đau",
+    stock: 0,
+    minStock: 40,
+    expiryDate: "N/A",
+    status: "Hết hàng",
+  },
+]
 
 export default function PharmacistDashboard() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <div className="flex items-center gap-2">
-            <HeartPulse className="h-6 w-6 text-teal-600" />
-            <h1 className="text-xl font-bold">Healthcare System</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Avatar>
-              <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Pharmacist" />
-              <AvatarFallback>PH</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </header>
-      <div className="flex flex-1">
-        <aside className="hidden w-64 border-r bg-background lg:block">
-          <div className="flex h-full flex-col gap-2 p-4">
-            <div className="flex items-center gap-2 px-2 py-4">
-              <Avatar>
-                <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Pharmacist" />
-                <AvatarFallback>PH</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">Michael Chen</p>
-                <p className="text-xs text-muted-foreground">Pharmacist</p>
-              </div>
-            </div>
-            <nav className="grid gap-1 px-2 py-2">
-              <Link href="/dashboard/pharmacist">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Home className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/dashboard/pharmacist/prescriptions">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Pill className="h-4 w-4" />
-                  Prescriptions
-                </Button>
-              </Link>
-              <Link href="/dashboard/pharmacist/inventory">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Package className="h-4 w-4" />
-                  Inventory
-                </Button>
-              </Link>
-              <Link href="/dashboard/pharmacist/orders">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <ShoppingCart className="h-4 w-4" />
-                  Orders
-                </Button>
-              </Link>
-              <Link href="/dashboard/pharmacist/profile">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <User className="h-4 w-4" />
-                  Profile
-                </Button>
-              </Link>
-              <Link href="/dashboard/pharmacist/settings">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Button>
-              </Link>
-            </nav>
-            <div className="mt-auto">
-              <Link href="/login">
-                <Button variant="ghost" className="w-full justify-start gap-2 text-red-500 hover:text-red-500">
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </aside>
-        <main className="flex-1">
-          <div className="container py-6">
-            <h2 className="mb-6 text-3xl font-bold">Pharmacist Dashboard</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Pending Prescriptions</span>
-                    <Pill className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">12</h3>
-                    <span className="ml-2 text-xs font-medium text-amber-600">4 urgent</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Dispensed Today</span>
-                    <Package className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">28</h3>
-                    <span className="ml-2 text-xs font-medium text-green-600">+5 from yesterday</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Low Stock Items</span>
-                    <ShoppingCart className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">7</h3>
-                    <span className="ml-2 text-xs font-medium text-red-600">Reorder needed</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Expiring Soon</span>
-                    <Calendar className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">15</h3>
-                    <span className="ml-2 text-xs font-medium text-amber-600">Within 30 days</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+    <div className="space-y-6">
+      <PageHeader title="Bảng điều khiển Dược sĩ" description="Quản lý đơn thuốc, kho thuốc và cấp phát thuốc">
+        <Link href="/dashboard/pharmacist/prescriptions">
+          <Button variant="outline" size="sm" className="h-9">
+            <Pill className="mr-2 h-4 w-4" />
+            Đơn thuốc
+          </Button>
+        </Link>
+        <Link href="/dashboard/pharmacist/inventory">
+          <Button variant="outline" size="sm" className="h-9">
+            <Package className="mr-2 h-4 w-4" />
+            Kho thuốc
+          </Button>
+        </Link>
+        <Link href="/dashboard/pharmacist/orders">
+          <Button variant="outline" size="sm" className="h-9">
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            Đặt hàng
+          </Button>
+        </Link>
+      </PageHeader>
 
-            <div className="mt-6">
-              <Tabs defaultValue="prescriptions">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="prescriptions">Pending Prescriptions</TabsTrigger>
-                  <TabsTrigger value="inventory">Inventory Status</TabsTrigger>
-                </TabsList>
-                <TabsContent value="prescriptions" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Pending Prescriptions</CardTitle>
-                      <CardDescription>Prescriptions waiting to be filled</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PharmacistPrescriptions />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="inventory" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Inventory Status</CardTitle>
-                      <CardDescription>Current stock levels and alerts</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PharmacistInventory />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </main>
+      <DashboardStatsGrid>
+        <DashboardStat
+          title="Đơn thuốc chờ xử lý"
+          value="15"
+          icon={<Pill className="h-4 w-4" />}
+          trend={{ value: "+3 so với hôm qua", positive: false }}
+        />
+        <DashboardStat
+          title="Thuốc sắp hết hàng"
+          value="8"
+          icon={<Package className="h-4 w-4" />}
+          description="Cần đặt hàng"
+        />
+        <DashboardStat
+          title="Đơn thuốc đã cấp hôm nay"
+          value="27"
+          icon={<Pill className="h-4 w-4" />}
+          trend={{ value: "+5 so với hôm qua", positive: true }}
+        />
+        <DashboardStat
+          title="Đơn đặt hàng đang chờ"
+          value="3"
+          icon={<ShoppingCart className="h-4 w-4" />}
+          description="1 ưu tiên cao"
+        />
+      </DashboardStatsGrid>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Suspense fallback={<div>Đang tải...</div>}>
+          <DashboardBarChart
+            title="Thống kê cấp phát thuốc"
+            description="Số lượng thuốc đã cấp theo tháng"
+            data={dispensingData}
+            categories={{
+              prescriptions: {
+                label: "Theo đơn",
+                color: "hsl(var(--chart-1))",
+              },
+              otc: {
+                label: "Không theo đơn",
+                color: "hsl(var(--chart-2))",
+              },
+            }}
+            xAxisKey="month"
+          />
+        </Suspense>
+        <Suspense fallback={<div>Đang tải...</div>}>
+          <DashboardPieChart
+            title="Tình trạng kho thuốc"
+            description="Phân loại thuốc theo tình trạng tồn kho"
+            data={inventoryData}
+          />
+        </Suspense>
       </div>
-      <footer className="border-t bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <p className="text-sm text-muted-foreground">© 2025 Healthcare System. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
-  )
-}
 
-function Calendar(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M8 2v4" />
-      <path d="M16 2v4" />
-      <rect width="18" height="18" x="3" y="4" rx="2" />
-      <path d="M3 10h18" />
-    </svg>
+      <Tabs defaultValue="prescriptions" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="prescriptions">Đơn thuốc</TabsTrigger>
+          <TabsTrigger value="inventory">Kho thuốc</TabsTrigger>
+        </TabsList>
+        <TabsContent value="prescriptions" className="space-y-4">
+          <DashboardTable
+            title="Đơn thuốc chờ xử lý"
+            description="Danh sách đơn thuốc cần được chuẩn bị và cấp phát"
+            columns={[
+              {
+                key: "id",
+                header: "Mã đơn",
+                cell: (item: any) => <div>#{item.id}</div>,
+              },
+              {
+                key: "patientName",
+                header: "Bệnh nhân",
+                cell: (item: any) => <div className="font-medium">{item.patientName}</div>,
+              },
+              {
+                key: "doctorName",
+                header: "Bác sĩ",
+                cell: (item: any) => <div>{item.doctorName}</div>,
+              },
+              {
+                key: "date",
+                header: "Ngày kê đơn",
+                cell: (item: any) => <div>{item.date}</div>,
+              },
+              {
+                key: "priority",
+                header: "Ưu tiên",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.priority === "Cao"
+                        ? "bg-red-100 text-red-800"
+                        : item.priority === "Trung bình"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {item.priority}
+                  </div>
+                ),
+              },
+              {
+                key: "status",
+                header: "Trạng thái",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.status === "Đã cấp"
+                        ? "bg-green-100 text-green-800"
+                        : item.status === "Đang chuẩn bị"
+                          ? "bg-blue-100 text-blue-800"
+                          : item.status === "Chờ xử lý"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {item.status}
+                  </div>
+                ),
+              },
+            ]}
+            data={prescriptions}
+            keyField="id"
+            actions={
+              <Link href="/dashboard/pharmacist/prescriptions">
+                <Button variant="outline" size="sm">
+                  Xem tất cả
+                </Button>
+              </Link>
+            }
+          />
+        </TabsContent>
+        <TabsContent value="inventory" className="space-y-4">
+          <DashboardTable
+            title="Kho thuốc"
+            description="Quản lý kho thuốc và tình trạng tồn kho"
+            columns={[
+              {
+                key: "name",
+                header: "Tên thuốc",
+                cell: (item: any) => <div className="font-medium">{item.name}</div>,
+              },
+              {
+                key: "category",
+                header: "Phân loại",
+                cell: (item: any) => <div>{item.category}</div>,
+              },
+              {
+                key: "stock",
+                header: "Tồn kho",
+                cell: (item: any) => <div>{item.stock}</div>,
+              },
+              {
+                key: "minStock",
+                header: "Tồn kho tối thiểu",
+                cell: (item: any) => <div>{item.minStock}</div>,
+              },
+              {
+                key: "expiryDate",
+                header: "Hạn sử dụng",
+                cell: (item: any) => <div>{item.expiryDate}</div>,
+              },
+              {
+                key: "status",
+                header: "Trạng thái",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.status === "Đầy đủ"
+                        ? "bg-green-100 text-green-800"
+                        : item.status === "Sắp hết"
+                          ? "bg-amber-100 text-amber-800"
+                          : item.status === "Hết hàng"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {item.status}
+                  </div>
+                ),
+              },
+            ]}
+            data={inventory}
+            keyField="id"
+            actions={
+              <Link href="/dashboard/pharmacist/inventory">
+                <Button variant="outline" size="sm">
+                  Xem tất cả
+                </Button>
+              </Link>
+            }
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }

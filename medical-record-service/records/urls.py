@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     MedicalRecordListCreateAPIView, MedicalRecordDetailAPIView, MedicalRecordSummaryAPIView,
+    EncounterListCreateAPIView, EncounterDetailAPIView,
     DiagnosisListCreateAPIView, DiagnosisDetailAPIView,
     TreatmentListCreateAPIView, TreatmentDetailAPIView,
     AllergyListCreateAPIView, AllergyDetailAPIView,
@@ -17,6 +18,10 @@ urlpatterns = [
     path('medical-records/', MedicalRecordListCreateAPIView.as_view(), name='medical-record-list'),
     path('medical-records/<int:pk>/', MedicalRecordDetailAPIView.as_view(), name='medical-record-detail'),
     path('medical-records/<int:pk>/summary/', MedicalRecordSummaryAPIView.as_view(), name='medical-record-summary'),
+
+    # Encounter endpoints
+    path('encounters/', EncounterListCreateAPIView.as_view(), name='encounter-list'),
+    path('encounters/<int:pk>/', EncounterDetailAPIView.as_view(), name='encounter-detail'),
 
     # Diagnosis endpoints
     path('diagnoses/', DiagnosisListCreateAPIView.as_view(), name='diagnosis-list'),

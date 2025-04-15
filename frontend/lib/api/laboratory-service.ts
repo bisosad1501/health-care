@@ -1,113 +1,164 @@
 import apiClient from "./api-client"
 
+export interface TestType {
+  id: number
+  name: string
+  code: string
+  description: string
+  category: string
+  sample_type: string
+  processing_time: number
+  instructions: string
+  created_at: string
+  updated_at: string
+}
+
 export interface LabTest {
-  id: string
-  patientId: string
-  doctorId: string
-  technicianId?: string
-  type: string
-  status: "ordered" | "in-progress" | "completed" | "cancelled"
-  orderedDate: string
-  completedDate?: string
-  results?: {
-    [key: string]: any
+  id: number
+  patient_id: number
+  test_type: number
+  test_type_details?: TestType
+  ordered_by: number
+  ordered_by_details?: {
+    id: number
+    first_name: string
+    last_name: string
+    email: string
   }
-  notes?: string
-  attachments?: string[]
-  createdAt: string
-  updatedAt: string
+  ordered_at: string
+  priority: string
+  status: string
+  notes: string
+  created_at: string
+  updated_at: string
 }
 
 export interface LabTestWithDetails extends LabTest {
   patient: {
-    id: string
-    firstName: string
-    lastName: string
+    id: number
+    first_name: string
+    last_name: string
+    email: string
   }
-  doctor: {
-    id: string
-    firstName: string
-    lastName: string
-    specialty: string
-  }
-  technician?: {
-    id: string
-    firstName: string
-    lastName: string
-  }
+  results: TestResult[]
+  sample_collection?: SampleCollection
 }
 
-export interface LabTestListParams {
-  page?: number
-  limit?: number
-  patientId?: string
-  doctorId?: string
-  technicianId?: string
-  status?: string
-  type?: string
-  startDate?: string
-  endDate?: string
+export interface TestResult {
+  id: number
+  lab_test: number
+  parameter: string
+  value: string
+  unit: string
+  reference_range: string
+  is_abnormal: boolean
+  performed_by: number
+  performed_by_details?: {
+    id: number
+    first_name: string
+    last_name: string
+    email: string
+  }
+  performed_at: string
+  notes: string
+  created_at: string
+  updated_at: string
 }
 
-export interface LabTestListResponse {
-  data: LabTestWithDetails[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
+export interface SampleCollection {
+  id: number
+  lab_test: number
+  collected_by: number
+  collected_by_details?: {
+    id: number
+    first_name: string
+    last_name: string
+    email: string
+  }
+  collected_at: string
+  sample_type: string
+  sample_container: string
+  sample_volume: string
+  status: string
+  notes: string
+  created_at: string
+  updated_at: string
+}
+
+export interface LabNotification {
+  id: number
+  lab_test: number
+  recipient_id: number
+  notification_type: string
+  message: string
+  is_read: boolean
+  created_at: string
+  updated_at: string
 }
 
 const LaboratoryService = {
-  getLabTests: async (params: LabTestListParams = {}): Promise<LabTestListResponse> => {
-    const response = await apiClient.get("/lab-tests", { params })
+  // Test types
+  async getAllTestTypes(): Promise<TestType[]> {
+    const response = await apiClient.get("/api/test-types/")
     return response.data
   },
 
-  getLabTestById: async (id: string): Promise<LabTestWithDetails> => {
-    const response = await apiClient.get(`/lab-tests/${id}`)
+  async createTestType(data: Partial<TestType>): Promise<TestType> {
+    const response = await apiClient.post("/api/test-types/", data)
     return response.data
   },
 
-  createLabTest: async (data: Omit<LabTest, "id" | "createdAt" | "updatedAt">): Promise<LabTest> => {
-    const response = await apiClient.post("/lab-tests", data)
+  // Lab tests
+  async getAllLabTests(): Promise<LabTest[]> {
+    const response = await apiClient.get("/api/lab-tests/")
     return response.data
   },
 
-  updateLabTest: async (id: string, data: Partial<LabTest>): Promise<LabTest> => {
-    const response = await apiClient.put(`/lab-tests/${id}`, data)
+  async createLabTest(data: Partial<LabTest>): Promise<LabTest> {
+    const response = await apiClient.post("/api/lab-tests/", data)
     return response.data
   },
 
-  cancelLabTest: async (id: string, reason?: string): Promise<LabTest> => {
-    const response = await apiClient.post(`/lab-tests/${id}/cancel`, { reason })
+  async getLabTestById(id: number): Promise<LabTestWithDetails> {
+    const response = await apiClient.get(`/api/lab-tests/${id}/`)
     return response.data
   },
 
-  assignTechnician: async (id: string, technicianId: string): Promise<LabTest> => {
-    const response = await apiClient.post(`/lab-tests/${id}/assign`, { technicianId })
+  async updateLabTest(id: number, data: Partial<LabTest>): Promise<LabTest> {
+    const response = await apiClient.put(`/api/lab-tests/${id}/`, data)
     return response.data
   },
 
-  updateResults: async (id: string, results: any, notes?: string): Promise<LabTest> => {
-    const response = await apiClient.post(`/lab-tests/${id}/results`, { results, notes })
+  // Test results
+  async getAllTestResults(): Promise<TestResult[]> {
+    const response = await apiClient.get("/api/test-results/")
     return response.data
   },
 
-  completeLabTest: async (id: string): Promise<LabTest> => {
-    const response = await apiClient.post(`/lab-tests/${id}/complete`)
+  async createTestResult(data: Partial<TestResult>): Promise<TestResult> {
+    const response = await apiClient.post("/api/test-results/", data)
     return response.data
   },
 
-  uploadAttachment: async (testId: string, file: File): Promise<{ url: string }> => {
-    const formData = new FormData()
-    formData.append("file", file)
+  // Sample collections
+  async getAllSampleCollections(): Promise<SampleCollection[]> {
+    const response = await apiClient.get("/api/sample-collections/")
+    return response.data
+  },
 
-    const response = await apiClient.post(`/lab-tests/${testId}/attachments`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
+  async createSampleCollection(data: Partial<SampleCollection>): Promise<SampleCollection> {
+    const response = await apiClient.post("/api/sample-collections/", data)
+    return response.data
+  },
 
+  // Lab notifications
+  async getLabNotifications(): Promise<LabNotification[]> {
+    const response = await apiClient.get("/api/lab-notifications/")
+    return response.data
+  },
+
+  async createLabNotification(data: Partial<LabNotification>): Promise<LabNotification> {
+    const response = await apiClient.post("/api/lab-notifications/", data)
     return response.data
   },
 }

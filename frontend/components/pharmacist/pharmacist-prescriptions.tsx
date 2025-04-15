@@ -7,49 +7,49 @@ export default function PharmacistPrescriptions() {
   const prescriptions = [
     {
       id: 1,
-      patient: "Emma Wilson",
-      patientId: "P-1001",
+      patient: "Nguyễn Thị Hoa",
+      patientId: "BN-1001",
       medication: "Lisinopril 10mg",
-      doctor: "Dr. Sarah Johnson",
-      date: "Today",
-      time: "09:45 AM",
-      status: "Urgent",
+      doctor: "BS. Nguyễn Thị Hương",
+      date: "Hôm nay",
+      time: "09:45",
+      status: "Khẩn cấp",
       refills: 2,
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 2,
-      patient: "James Rodriguez",
-      patientId: "P-1008",
+      patient: "Trần Văn Nam",
+      patientId: "BN-1008",
       medication: "Metformin 500mg",
-      doctor: "Dr. Michael Chen",
-      date: "Today",
-      time: "10:30 AM",
-      status: "Pending",
+      doctor: "BS. Phạm Văn Đức",
+      date: "Hôm nay",
+      time: "10:30",
+      status: "Chờ xử lý",
       refills: 3,
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 3,
-      patient: "Sophia Chen",
-      patientId: "P-1003",
+      patient: "Lê Thị Lan",
+      patientId: "BN-1003",
       medication: "Atorvastatin 20mg",
-      doctor: "Dr. Sarah Johnson",
-      date: "Today",
-      time: "11:15 AM",
-      status: "Pending",
+      doctor: "BS. Nguyễn Thị Hương",
+      date: "Hôm nay",
+      time: "11:15",
+      status: "Chờ xử lý",
       refills: 5,
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 4,
-      patient: "William Taylor",
-      patientId: "P-1006",
+      patient: "Phạm Văn Minh",
+      patientId: "BN-1006",
       medication: "Amoxicillin 500mg",
-      doctor: "Dr. Michael Chen",
-      date: "Today",
-      time: "01:30 PM",
-      status: "Urgent",
+      doctor: "BS. Phạm Văn Đức",
+      date: "Hôm nay",
+      time: "13:30",
+      status: "Khẩn cấp",
       refills: 0,
       avatar: "/placeholder.svg?height=40&width=40",
     },
@@ -64,7 +64,7 @@ export default function PharmacistPrescriptions() {
         >
           <div className="flex items-start gap-4">
             <Avatar>
-              <AvatarImage src={prescription.avatar} alt={prescription.patient} />
+              <AvatarImage src={prescription.avatar || "/placeholder.svg"} alt={prescription.patient} />
               <AvatarFallback>
                 {prescription.patient
                   .split(" ")
@@ -96,9 +96,9 @@ export default function PharmacistPrescriptions() {
           </div>
           <div className="mt-4 flex items-center justify-between md:mt-0 md:flex-col md:items-end">
             <Badge
-              variant={prescription.status === "Urgent" ? "destructive" : "outline"}
+              variant={prescription.status === "Khẩn cấp" ? "destructive" : "outline"}
               className={
-                prescription.status === "Urgent"
+                prescription.status === "Khẩn cấp"
                   ? ""
                   : "bg-amber-50 text-amber-700 hover:bg-amber-50 hover:text-amber-700"
               }
@@ -107,7 +107,7 @@ export default function PharmacistPrescriptions() {
             </Badge>
             <div className="flex items-center gap-2 mt-2">
               <Button variant="default" size="sm">
-                Process
+                Xử lý
               </Button>
               <Button variant="ghost" size="icon">
                 <MoreHorizontal className="h-4 w-4" />

@@ -13,17 +13,19 @@ class DoctorAvailability(models.Model):
         (5, 'Saturday'),
         (6, 'Sunday'),
     ]
-    
+
     doctor_id = models.IntegerField(help_text="ID của bác sĩ trong user-service")
     weekday = models.IntegerField(choices=WEEKDAY_CHOICES, help_text="Ngày trong tuần (0: Thứ 2, 6: Chủ nhật)")
     start_time = models.TimeField(help_text="Giờ bắt đầu làm việc")
     end_time = models.TimeField(help_text="Giờ kết thúc làm việc")
-    is_available = models.BooleanField(default=True, help_text="Bác sĩ có làm việc vào ngày này không")
+    is_available = models.BooleanField(default=True, help_text="Trạng thái hoạt động của lịch làm việc")
+    location = models.CharField(max_length=255, help_text="Địa điểm làm việc", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Dr. {self.doctor_id} - {self.get_weekday_display()} ({self.start_time} - {self.end_time})"
+        status = "Active" if self.is_available else "Inactive"
+        return f"Dr. {self.doctor_id} - {self.get_weekday_display()} ({self.start_time} - {self.end_time}) - {status}"
 
     class Meta:
         verbose_name = "Doctor Availability"
@@ -37,12 +39,14 @@ class TimeSlot(models.Model):
     date = models.DateField(help_text="Ngày khám")
     start_time = models.TimeField(help_text="Giờ bắt đầu")
     end_time = models.TimeField(help_text="Giờ kết thúc")
-    is_booked = models.BooleanField(default=False, help_text="Khung giờ đã được đặt chưa")
+    is_available = models.BooleanField(default=True, help_text="Khung giờ có sẵn sàng không")
+    availability = models.ForeignKey(DoctorAvailability, on_delete=models.CASCADE, related_name='time_slots', null=True, blank=True)
+    location = models.CharField(max_length=255, help_text="Địa điểm khám", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        status = "Booked" if self.is_booked else "Available"
+        status = "Available" if self.is_available else "Booked"
         return f"Dr. {self.doctor_id} - {self.date} ({self.start_time} - {self.end_time}) - {status}"
 
     class Meta:
@@ -55,24 +59,50 @@ class TimeSlot(models.Model):
 class Appointment(models.Model):
     """Lịch hẹn khám bệnh"""
     STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('CONFIRMED', 'Confirmed'),
-        ('CANCELLED', 'Cancelled'),
-        ('COMPLETED', 'Completed'),
-        ('NO_SHOW', 'No Show'),
+        ('PENDING', 'Chờ xác nhận'),
+        ('CONFIRMED', 'Đã xác nhận'),
+        ('CANCELLED', 'Đã hủy'),
+        ('COMPLETED', 'Đã hoàn thành'),
+        ('NO_SHOW', 'Không đến'),
     ]
-    
+
     patient_id = models.IntegerField(help_text="ID của bệnh nhân trong user-service")
-    doctor_id = models.IntegerField(help_text="ID của bác sĩ trong user-service")
-    time_slot = models.OneToOneField(TimeSlot, on_delete=models.CASCADE, related_name='appointment', null=True, blank=True)
-    appointment_date = models.DateField(help_text="Ngày hẹn")
-    start_time = models.TimeField(help_text="Giờ bắt đầu")
-    end_time = models.TimeField(help_text="Giờ kết thúc")
+    time_slot = models.OneToOneField(TimeSlot, on_delete=models.CASCADE, related_name='appointment')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     reason = models.TextField(help_text="Lý do khám", blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
+    medical_record_id = models.IntegerField(null=True, blank=True, help_text="ID hồ sơ y tế liên quan")
+    insurance_id = models.CharField(max_length=100, blank=True, null=True, help_text="Mã bảo hiểm")
+    created_by = models.IntegerField(help_text="ID người tạo lịch hẹn", null=True, blank=True)
+
+    # Các trường liên kết với service khác
+    prescription_id = models.IntegerField(null=True, blank=True, help_text="ID đơn thuốc liên quan")
+    lab_request_id = models.IntegerField(null=True, blank=True, help_text="ID yêu cầu xét nghiệm liên quan")
+    billing_id = models.IntegerField(null=True, blank=True, help_text="ID hóa đơn liên quan")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Các phương thức tiện ích
+    @property
+    def doctor_id(self):
+        return self.time_slot.doctor_id
+
+    @property
+    def appointment_date(self):
+        return self.time_slot.date
+
+    @property
+    def start_time(self):
+        return self.time_slot.start_time
+
+    @property
+    def end_time(self):
+        return self.time_slot.end_time
+
+    @property
+    def location(self):
+        return self.time_slot.location
 
     def __str__(self):
         return f"Appointment: Patient {self.patient_id} with Dr. {self.doctor_id} on {self.appointment_date} ({self.start_time} - {self.end_time})"
@@ -80,7 +110,7 @@ class Appointment(models.Model):
     class Meta:
         verbose_name = "Appointment"
         verbose_name_plural = "Appointments"
-        ordering = ['appointment_date', 'start_time']
+        ordering = ['time_slot__date', 'time_slot__start_time']
 
 
 class AppointmentReminder(models.Model):
@@ -90,13 +120,13 @@ class AppointmentReminder(models.Model):
         ('SMS', 'SMS'),
         ('PUSH', 'Push Notification'),
     ]
-    
+
     STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('SENT', 'Sent'),
-        ('FAILED', 'Failed'),
+        ('PENDING', 'Chờ gửi'),
+        ('SENT', 'Đã gửi'),
+        ('FAILED', 'Gửi thất bại'),
     ]
-    
+
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='reminders')
     reminder_type = models.CharField(max_length=10, choices=REMINDER_TYPE_CHOICES)
     scheduled_time = models.DateTimeField(help_text="Thời gian dự kiến gửi nhắc nhở")
@@ -107,7 +137,7 @@ class AppointmentReminder(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.get_reminder_type_display()} reminder for appointment {self.appointment.id} - {self.status}"
+        return f"{self.get_reminder_type_display()} reminder for appointment {self.appointment.id} - {self.get_status_display()}"
 
     class Meta:
         verbose_name = "Appointment Reminder"

@@ -5,7 +5,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from django.utils import timezone
 from .models import (
-    MedicalRecord, Diagnosis, Treatment, Allergy,
+    MedicalRecord, Encounter, Diagnosis, Treatment, Allergy,
     Immunization, MedicalHistory, Medication,
     VitalSign, LabTest, LabResult
 )
@@ -38,39 +38,28 @@ class MedicalRecordListCreateAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get(self, request):
-        """
-        Lấy danh sách hồ sơ y tế.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = MedicalRecord.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về hồ sơ của chính họ
         if user_role == 'PATIENT':
             queryset = queryset.filter(patient_id=user_id)
 
-        # Lọc theo patient_id nếu được cung cấp
         patient_id = request.query_params.get('patient_id', None)
         if patient_id is not None:
-            # Bệnh nhân không thể xem hồ sơ của người khác
             if user_role == 'PATIENT' and int(patient_id) != user_id:
                 return Response({"detail": "You do not have permission to view this medical record."}, status=status.HTTP_403_FORBIDDEN)
             queryset = queryset.filter(patient_id=patient_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(patient_id__icontains=search)
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-created_at')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -82,16 +71,8 @@ class MedicalRecordListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới hồ sơ y tế.
-        """
         serializer = MedicalRecordSerializer(data=request.data)
         if serializer.is_valid():
-            # Tạm thời bỏ qua kiểm tra quyền để test API
-            # user_role = request.auth.get('role', None) if request.auth else None
-            # if user_role not in ['DOCTOR', 'ADMIN']:
-            #     return Response({"detail": "You do not have permission to create medical records."}, status=status.HTTP_403_FORBIDDEN)
-
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -104,9 +85,6 @@ class MedicalRecordDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng hồ sơ y tế dựa trên primary key.
-        """
         try:
             obj = MedicalRecord.objects.get(pk=pk)
             self.check_object_permissions(self.request, obj)
@@ -115,17 +93,12 @@ class MedicalRecordDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của hồ sơ y tế.
-        """
         medical_record = self.get_object(pk)
         if medical_record is None:
             return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Lấy thông tin bệnh nhân từ User Service
         patient_info = UserService.get_patient_info(medical_record.patient_id)
 
-        # Thêm thông tin bệnh nhân vào response
         serializer = MedicalRecordSerializer(medical_record)
         data = serializer.data
         if patient_info:
@@ -140,14 +113,10 @@ class MedicalRecordDetailAPIView(APIView):
         return Response(data)
 
     def put(self, request, pk):
-        """
-        Cập nhật hồ sơ y tế.
-        """
         medical_record = self.get_object(pk)
         if medical_record is None:
             return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể cập nhật hồ sơ y tế
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to update medical records."}, status=status.HTTP_403_FORBIDDEN)
@@ -159,14 +128,10 @@ class MedicalRecordDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa hồ sơ y tế.
-        """
         medical_record = self.get_object(pk)
         if medical_record is None:
             return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ quản trị viên mới có thể xóa hồ sơ y tế
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role != 'ADMIN':
             return Response({"detail": "You do not have permission to delete medical records."}, status=status.HTTP_403_FORBIDDEN)
@@ -182,9 +147,6 @@ class MedicalRecordSummaryAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get(self, request, pk):
-        """
-        Lấy tóm tắt hồ sơ y tế.
-        """
         try:
             medical_record = MedicalRecord.objects.get(pk=pk)
             self.check_object_permissions(request, medical_record)
@@ -203,26 +165,18 @@ class DiagnosisListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách chẩn đoán.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = Diagnosis.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về chẩn đoán trong hồ sơ của chính họ
         if user_role == 'PATIENT':
-            queryset = queryset.filter(medical_record__patient_id=user_id)
+            queryset = queryset.filter(encounter__medical_record__patient_id=user_id)
 
-        # Lọc theo medical_record_id nếu được cung cấp
-        medical_record_id = request.query_params.get('medical_record_id', None)
-        if medical_record_id is not None:
-            queryset = queryset.filter(medical_record_id=medical_record_id)
+        encounter_id = request.query_params.get('encounter_id', None)
+        if encounter_id is not None:
+            queryset = queryset.filter(encounter_id=encounter_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(
@@ -230,12 +184,10 @@ class DiagnosisListCreateAPIView(APIView):
                 Q(diagnosis_description__icontains=search)
             )
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-diagnosis_date')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -247,43 +199,31 @@ class DiagnosisListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới chẩn đoán.
-        """
         serializer = DiagnosisSerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
-            user_id = request.auth.get('id', None) if request.auth else None
+            user_id = request.user.id
 
-            # Log thông tin để debug
-            print(f"User ID: {user_id}, Role: {user_role}, Method: {request.method}")
-
-            # Chỉ bác sĩ và quản trị viên mới có thể tạo chẩn đoán
             if user_role not in ['DOCTOR', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create diagnoses."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào hồ sơ y tế
-            medical_record_id = request.data.get('medical_record')
+            encounter_id = request.data.get('encounter')
             try:
-                medical_record = MedicalRecord.objects.get(pk=medical_record_id)
-                if user_role == 'PATIENT' and medical_record.patient_id != user_id:
+                from .models import Encounter
+                encounter = Encounter.objects.get(pk=encounter_id)
+                if user_role == 'PATIENT' and encounter.medical_record.patient_id != user_id:
                     return Response({"detail": "You do not have permission to add diagnoses to this medical record."}, status=status.HTTP_403_FORBIDDEN)
-            except MedicalRecord.DoesNotExist:
-                return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
+            except Encounter.DoesNotExist:
+                return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Xử lý theo vai trò người dùng
             if user_role == 'DOCTOR':
-                # Nếu là bác sĩ, doctor_id chính là user_id của bác sĩ đó
                 serializer.save(doctor_id=user_id)
             elif user_role == 'ADMIN':
-                # Nếu là admin, có thể chỉ định doctor_id từ request
                 doctor_id = request.data.get('doctor_id')
                 if not doctor_id:
                     return Response({"detail": "doctor_id is required for admin users."}, status=status.HTTP_400_BAD_REQUEST)
                 serializer.save(doctor_id=doctor_id)
             else:
-                # Trường hợp này không nên xảy ra vì đã kiểm tra quyền ở trên
                 return Response({"detail": "Only doctors and admins can create diagnoses."}, status=status.HTTP_403_FORBIDDEN)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -296,19 +236,14 @@ class DiagnosisDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng chẩn đoán dựa trên primary key.
-        """
         try:
             diagnosis = Diagnosis.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
             if user_role in ['DOCTOR', 'ADMIN', 'NURSE']:
                 return diagnosis
-            elif user_role == 'PATIENT' and diagnosis.medical_record.patient_id == user_id:
+            elif user_role == 'PATIENT' and diagnosis.encounter.medical_record.patient_id == user_id:
                 return diagnosis
             else:
                 return None
@@ -316,17 +251,11 @@ class DiagnosisDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của chẩn đoán.
-        """
         diagnosis = self.get_object(pk)
         if diagnosis is None:
             return Response({"detail": "Diagnosis not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Lấy thông tin bác sĩ từ User Service
         doctor_info = UserService.get_user_info(diagnosis.doctor_id)
-
-        # Thêm thông tin bác sĩ vào response
         serializer = DiagnosisSerializer(diagnosis)
         data = serializer.data
         if doctor_info:
@@ -339,14 +268,10 @@ class DiagnosisDetailAPIView(APIView):
         return Response(data)
 
     def put(self, request, pk):
-        """
-        Cập nhật chẩn đoán.
-        """
         diagnosis = self.get_object(pk)
         if diagnosis is None:
             return Response({"detail": "Diagnosis not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể cập nhật chẩn đoán
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to update diagnoses."}, status=status.HTTP_403_FORBIDDEN)
@@ -358,14 +283,10 @@ class DiagnosisDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa chẩn đoán.
-        """
         diagnosis = self.get_object(pk)
         if diagnosis is None:
             return Response({"detail": "Diagnosis not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa chẩn đoán
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete diagnoses."}, status=status.HTTP_403_FORBIDDEN)
@@ -383,26 +304,18 @@ class TreatmentListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách điều trị.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = Treatment.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về điều trị trong hồ sơ của chính họ
         if user_role == 'PATIENT':
-            queryset = queryset.filter(diagnosis__medical_record__patient_id=user_id)
+            queryset = queryset.filter(diagnosis__encounter__medical_record__patient_id=user_id)
 
-        # Lọc theo diagnosis_id nếu được cung cấp
         diagnosis_id = request.query_params.get('diagnosis_id', None)
         if diagnosis_id is not None:
             queryset = queryset.filter(diagnosis_id=diagnosis_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(
@@ -410,12 +323,10 @@ class TreatmentListCreateAPIView(APIView):
                 Q(treatment_description__icontains=search)
             )
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-start_date')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -427,24 +338,18 @@ class TreatmentListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới điều trị.
-        """
         serializer = TreatmentSerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ bác sĩ và quản trị viên mới có thể tạo điều trị
             if user_role not in ['DOCTOR', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create treatments."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào chẩn đoán
             diagnosis_id = request.data.get('diagnosis')
             try:
                 diagnosis = Diagnosis.objects.get(pk=diagnosis_id)
-                if user_role == 'PATIENT' and diagnosis.medical_record.patient_id != user_id:
+                if user_role == 'PATIENT' and diagnosis.encounter.medical_record.patient_id != user_id:
                     return Response({"detail": "You do not have permission to add treatments to this diagnosis."}, status=status.HTTP_403_FORBIDDEN)
             except Diagnosis.DoesNotExist:
                 return Response({"detail": "Diagnosis not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -461,19 +366,14 @@ class TreatmentDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng điều trị dựa trên primary key.
-        """
         try:
             treatment = Treatment.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
             if user_role in ['DOCTOR', 'ADMIN', 'NURSE']:
                 return treatment
-            elif user_role == 'PATIENT' and treatment.diagnosis.medical_record.patient_id == user_id:
+            elif user_role == 'PATIENT' and treatment.diagnosis.encounter.medical_record.patient_id == user_id:
                 return treatment
             else:
                 return None
@@ -481,9 +381,6 @@ class TreatmentDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của điều trị.
-        """
         treatment = self.get_object(pk)
         if treatment is None:
             return Response({"detail": "Treatment not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -492,14 +389,10 @@ class TreatmentDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật điều trị.
-        """
         treatment = self.get_object(pk)
         if treatment is None:
             return Response({"detail": "Treatment not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể cập nhật điều trị
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to update treatments."}, status=status.HTTP_403_FORBIDDEN)
@@ -511,14 +404,10 @@ class TreatmentDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa điều trị.
-        """
         treatment = self.get_object(pk)
         if treatment is None:
             return Response({"detail": "Treatment not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa điều trị
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete treatments."}, status=status.HTTP_403_FORBIDDEN)
@@ -536,26 +425,18 @@ class AllergyListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách dị ứng.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = Allergy.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về dị ứng trong hồ sơ của chính họ
         if user_role == 'PATIENT':
             queryset = queryset.filter(medical_record__patient_id=user_id)
 
-        # Lọc theo medical_record_id nếu được cung cấp
         medical_record_id = request.query_params.get('medical_record_id', None)
         if medical_record_id is not None:
             queryset = queryset.filter(medical_record_id=medical_record_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(
@@ -563,12 +444,10 @@ class AllergyListCreateAPIView(APIView):
                 Q(allergy_name__icontains=search)
             )
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-created_at')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -580,20 +459,14 @@ class AllergyListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới dị ứng.
-        """
         serializer = AllergySerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ bác sĩ và quản trị viên mới có thể tạo dị ứng
             if user_role not in ['DOCTOR', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create allergies."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào hồ sơ y tế
             medical_record_id = request.data.get('medical_record')
             try:
                 medical_record = MedicalRecord.objects.get(pk=medical_record_id)
@@ -614,13 +487,8 @@ class AllergyDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng dị ứng dựa trên primary key.
-        """
         try:
             allergy = Allergy.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
@@ -634,9 +502,6 @@ class AllergyDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của dị ứng.
-        """
         allergy = self.get_object(pk)
         if allergy is None:
             return Response({"detail": "Allergy not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -645,14 +510,10 @@ class AllergyDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật dị ứng.
-        """
         allergy = self.get_object(pk)
         if allergy is None:
             return Response({"detail": "Allergy not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể cập nhật dị ứng
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to update allergies."}, status=status.HTTP_403_FORBIDDEN)
@@ -664,14 +525,10 @@ class AllergyDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa dị ứng.
-        """
         allergy = self.get_object(pk)
         if allergy is None:
             return Response({"detail": "Allergy not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa dị ứng
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete allergies."}, status=status.HTTP_403_FORBIDDEN)
@@ -689,36 +546,26 @@ class ImmunizationListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách tiêm chủng.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = Immunization.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về tiêm chủng trong hồ sơ của chính họ
         if user_role == 'PATIENT':
-            queryset = queryset.filter(medical_record__patient_id=user_id)
+            queryset = queryset.filter(encounter__medical_record__patient_id=user_id)
 
-        # Lọc theo medical_record_id nếu được cung cấp
-        medical_record_id = request.query_params.get('medical_record_id', None)
-        if medical_record_id is not None:
-            queryset = queryset.filter(medical_record_id=medical_record_id)
+        encounter_id = request.query_params.get('encounter_id', None)
+        if encounter_id is not None:
+            queryset = queryset.filter(encounter_id=encounter_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(vaccine_name__icontains=search)
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-administration_date')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -730,29 +577,23 @@ class ImmunizationListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới tiêm chủng.
-        """
         serializer = ImmunizationSerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ bác sĩ, y tá và quản trị viên mới có thể tạo tiêm chủng
             if user_role not in ['DOCTOR', 'NURSE', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create immunizations."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào hồ sơ y tế
-            medical_record_id = request.data.get('medical_record')
+            encounter_id = request.data.get('encounter')
             try:
-                medical_record = MedicalRecord.objects.get(pk=medical_record_id)
-                if user_role == 'PATIENT' and medical_record.patient_id != user_id:
+                from .models import Encounter
+                encounter = Encounter.objects.get(pk=encounter_id)
+                if user_role == 'PATIENT' and encounter.medical_record.patient_id != user_id:
                     return Response({"detail": "You do not have permission to add immunizations to this medical record."}, status=status.HTTP_403_FORBIDDEN)
-            except MedicalRecord.DoesNotExist:
-                return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
+            except Encounter.DoesNotExist:
+                return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Lưu thông tin người thực hiện tiêm chủng
             serializer.save(administered_by=user_id)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -765,19 +606,14 @@ class ImmunizationDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng tiêm chủng dựa trên primary key.
-        """
         try:
             immunization = Immunization.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
             if user_role in ['DOCTOR', 'ADMIN', 'NURSE']:
                 return immunization
-            elif user_role == 'PATIENT' and immunization.medical_record.patient_id == user_id:
+            elif user_role == 'PATIENT' and immunization.encounter.medical_record.patient_id == user_id:
                 return immunization
             else:
                 return None
@@ -785,9 +621,6 @@ class ImmunizationDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của tiêm chủng.
-        """
         immunization = self.get_object(pk)
         if immunization is None:
             return Response({"detail": "Immunization not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -796,14 +629,10 @@ class ImmunizationDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật tiêm chủng.
-        """
         immunization = self.get_object(pk)
         if immunization is None:
             return Response({"detail": "Immunization not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ, y tá và quản trị viên mới có thể cập nhật tiêm chủng
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'NURSE', 'ADMIN']:
             return Response({"detail": "You do not have permission to update immunizations."}, status=status.HTTP_403_FORBIDDEN)
@@ -815,14 +644,10 @@ class ImmunizationDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa tiêm chủng.
-        """
         immunization = self.get_object(pk)
         if immunization is None:
             return Response({"detail": "Immunization not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa tiêm chủng
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete immunizations."}, status=status.HTTP_403_FORBIDDEN)
@@ -840,36 +665,26 @@ class MedicalHistoryListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách lịch sử bệnh án.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = MedicalHistory.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về lịch sử bệnh án trong hồ sơ của chính họ
         if user_role == 'PATIENT':
             queryset = queryset.filter(medical_record__patient_id=user_id)
 
-        # Lọc theo medical_record_id nếu được cung cấp
         medical_record_id = request.query_params.get('medical_record_id', None)
         if medical_record_id is not None:
             queryset = queryset.filter(medical_record_id=medical_record_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(condition_name__icontains=search)
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-diagnosis_date')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -881,20 +696,14 @@ class MedicalHistoryListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới lịch sử bệnh án.
-        """
         serializer = MedicalHistorySerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ bác sĩ và quản trị viên mới có thể tạo lịch sử bệnh án
             if user_role not in ['DOCTOR', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create medical histories."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào hồ sơ y tế
             medical_record_id = request.data.get('medical_record')
             try:
                 medical_record = MedicalRecord.objects.get(pk=medical_record_id)
@@ -915,13 +724,8 @@ class MedicalHistoryDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng lịch sử bệnh án dựa trên primary key.
-        """
         try:
             medical_history = MedicalHistory.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
@@ -935,9 +739,6 @@ class MedicalHistoryDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của lịch sử bệnh án.
-        """
         medical_history = self.get_object(pk)
         if medical_history is None:
             return Response({"detail": "Medical history not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -946,14 +747,10 @@ class MedicalHistoryDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật lịch sử bệnh án.
-        """
         medical_history = self.get_object(pk)
         if medical_history is None:
             return Response({"detail": "Medical history not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể cập nhật lịch sử bệnh án
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to update medical histories."}, status=status.HTTP_403_FORBIDDEN)
@@ -965,14 +762,10 @@ class MedicalHistoryDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa lịch sử bệnh án.
-        """
         medical_history = self.get_object(pk)
         if medical_history is None:
             return Response({"detail": "Medical history not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa lịch sử bệnh án
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete medical histories."}, status=status.HTTP_403_FORBIDDEN)
@@ -990,26 +783,18 @@ class MedicationListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách thuốc.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = Medication.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về thuốc trong hồ sơ của chính họ
         if user_role == 'PATIENT':
-            queryset = queryset.filter(medical_record__patient_id=user_id)
+            queryset = queryset.filter(encounter__medical_record__patient_id=user_id)
 
-        # Lọc theo medical_record_id nếu được cung cấp
-        medical_record_id = request.query_params.get('medical_record_id', None)
-        if medical_record_id is not None:
-            queryset = queryset.filter(medical_record_id=medical_record_id)
+        encounter_id = request.query_params.get('encounter_id', None)
+        if encounter_id is not None:
+            queryset = queryset.filter(encounter_id=encounter_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(
@@ -1017,12 +802,10 @@ class MedicationListCreateAPIView(APIView):
                 Q(dosage__icontains=search)
             )
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-start_date')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -1034,29 +817,23 @@ class MedicationListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới thuốc.
-        """
         serializer = MedicationSerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ bác sĩ và quản trị viên mới có thể tạo thuốc
             if user_role not in ['DOCTOR', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create medications."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào hồ sơ y tế
-            medical_record_id = request.data.get('medical_record')
+            encounter_id = request.data.get('encounter')
             try:
-                medical_record = MedicalRecord.objects.get(pk=medical_record_id)
-                if user_role == 'PATIENT' and medical_record.patient_id != user_id:
+                from .models import Encounter
+                encounter = Encounter.objects.get(pk=encounter_id)
+                if user_role == 'PATIENT' and encounter.medical_record.patient_id != user_id:
                     return Response({"detail": "You do not have permission to add medications to this medical record."}, status=status.HTTP_403_FORBIDDEN)
-            except MedicalRecord.DoesNotExist:
-                return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
+            except Encounter.DoesNotExist:
+                return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Lưu thông tin bác sĩ kê đơn
             serializer.save(prescribed_by=user_id)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1069,19 +846,14 @@ class MedicationDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng thuốc dựa trên primary key.
-        """
         try:
             medication = Medication.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
             if user_role in ['DOCTOR', 'ADMIN', 'NURSE']:
                 return medication
-            elif user_role == 'PATIENT' and medication.medical_record.patient_id == user_id:
+            elif user_role == 'PATIENT' and medication.encounter.medical_record.patient_id == user_id:
                 return medication
             else:
                 return None
@@ -1089,9 +861,6 @@ class MedicationDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của thuốc.
-        """
         medication = self.get_object(pk)
         if medication is None:
             return Response({"detail": "Medication not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -1100,14 +869,10 @@ class MedicationDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật thuốc.
-        """
         medication = self.get_object(pk)
         if medication is None:
             return Response({"detail": "Medication not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể cập nhật thuốc
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to update medications."}, status=status.HTTP_403_FORBIDDEN)
@@ -1119,14 +884,10 @@ class MedicationDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa thuốc.
-        """
         medication = self.get_object(pk)
         if medication is None:
             return Response({"detail": "Medication not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa thuốc
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete medications."}, status=status.HTTP_403_FORBIDDEN)
@@ -1144,36 +905,26 @@ class VitalSignListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách dấu hiệu sinh tồn.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = VitalSign.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về dấu hiệu sinh tồn trong hồ sơ của chính họ
         if user_role == 'PATIENT':
-            queryset = queryset.filter(medical_record__patient_id=user_id)
+            queryset = queryset.filter(encounter__medical_record__patient_id=user_id)
 
-        # Lọc theo medical_record_id nếu được cung cấp
-        medical_record_id = request.query_params.get('medical_record_id', None)
-        if medical_record_id is not None:
-            queryset = queryset.filter(medical_record_id=medical_record_id)
+        encounter_id = request.query_params.get('encounter_id', None)
+        if encounter_id is not None:
+            queryset = queryset.filter(encounter_id=encounter_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(vital_type__icontains=search)
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-recorded_at')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -1185,29 +936,23 @@ class VitalSignListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới dấu hiệu sinh tồn.
-        """
         serializer = VitalSignSerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ bác sĩ, y tá và quản trị viên mới có thể tạo dấu hiệu sinh tồn
             if user_role not in ['DOCTOR', 'NURSE', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create vital signs."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào hồ sơ y tế
-            medical_record_id = request.data.get('medical_record')
+            encounter_id = request.data.get('encounter')
             try:
-                medical_record = MedicalRecord.objects.get(pk=medical_record_id)
-                if user_role == 'PATIENT' and medical_record.patient_id != user_id:
+                from .models import Encounter
+                encounter = Encounter.objects.get(pk=encounter_id)
+                if user_role == 'PATIENT' and encounter.medical_record.patient_id != user_id:
                     return Response({"detail": "You do not have permission to add vital signs to this medical record."}, status=status.HTTP_403_FORBIDDEN)
-            except MedicalRecord.DoesNotExist:
-                return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
+            except Encounter.DoesNotExist:
+                return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Lưu thông tin người ghi nhận
             serializer.save(recorded_by=user_id, recorded_at=timezone.now())
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1220,19 +965,14 @@ class VitalSignDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng dấu hiệu sinh tồn dựa trên primary key.
-        """
         try:
             vital_sign = VitalSign.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
             if user_role in ['DOCTOR', 'ADMIN', 'NURSE']:
                 return vital_sign
-            elif user_role == 'PATIENT' and vital_sign.medical_record.patient_id == user_id:
+            elif user_role == 'PATIENT' and vital_sign.encounter.medical_record.patient_id == user_id:
                 return vital_sign
             else:
                 return None
@@ -1240,9 +980,6 @@ class VitalSignDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của dấu hiệu sinh tồn.
-        """
         vital_sign = self.get_object(pk)
         if vital_sign is None:
             return Response({"detail": "Vital sign not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -1251,14 +988,10 @@ class VitalSignDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật dấu hiệu sinh tồn.
-        """
         vital_sign = self.get_object(pk)
         if vital_sign is None:
             return Response({"detail": "Vital sign not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ, y tá và quản trị viên mới có thể cập nhật dấu hiệu sinh tồn
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'NURSE', 'ADMIN']:
             return Response({"detail": "You do not have permission to update vital signs."}, status=status.HTTP_403_FORBIDDEN)
@@ -1270,14 +1003,10 @@ class VitalSignDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa dấu hiệu sinh tồn.
-        """
         vital_sign = self.get_object(pk)
         if vital_sign is None:
             return Response({"detail": "Vital sign not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa dấu hiệu sinh tồn
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete vital signs."}, status=status.HTTP_403_FORBIDDEN)
@@ -1295,26 +1024,18 @@ class LabTestListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách xét nghiệm.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = LabTest.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về xét nghiệm trong hồ sơ của chính họ
         if user_role == 'PATIENT':
-            queryset = queryset.filter(medical_record__patient_id=user_id)
+            queryset = queryset.filter(encounter__medical_record__patient_id=user_id)
 
-        # Lọc theo medical_record_id nếu được cung cấp
-        medical_record_id = request.query_params.get('medical_record_id', None)
-        if medical_record_id is not None:
-            queryset = queryset.filter(medical_record_id=medical_record_id)
+        encounter_id = request.query_params.get('encounter_id', None)
+        if encounter_id is not None:
+            queryset = queryset.filter(encounter_id=encounter_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(
@@ -1322,12 +1043,10 @@ class LabTestListCreateAPIView(APIView):
                 Q(test_code__icontains=search)
             )
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-ordered_at')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -1339,29 +1058,23 @@ class LabTestListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới xét nghiệm.
-        """
         serializer = LabTestSerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ bác sĩ và quản trị viên mới có thể tạo xét nghiệm
             if user_role not in ['DOCTOR', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create lab tests."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào hồ sơ y tế
-            medical_record_id = request.data.get('medical_record')
+            encounter_id = request.data.get('encounter')
             try:
-                medical_record = MedicalRecord.objects.get(pk=medical_record_id)
-                if user_role == 'PATIENT' and medical_record.patient_id != user_id:
+                from .models import Encounter
+                encounter = Encounter.objects.get(pk=encounter_id)
+                if user_role == 'PATIENT' and encounter.medical_record.patient_id != user_id:
                     return Response({"detail": "You do not have permission to add lab tests to this medical record."}, status=status.HTTP_403_FORBIDDEN)
-            except MedicalRecord.DoesNotExist:
-                return Response({"detail": "Medical record not found."}, status=status.HTTP_404_NOT_FOUND)
+            except Encounter.DoesNotExist:
+                return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Lưu thông tin bác sĩ yêu cầu xét nghiệm
             serializer.save(ordered_by=user_id, ordered_at=timezone.now())
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1374,19 +1087,14 @@ class LabTestDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng xét nghiệm dựa trên primary key.
-        """
         try:
             lab_test = LabTest.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
             if user_role in ['DOCTOR', 'ADMIN', 'NURSE']:
                 return lab_test
-            elif user_role == 'PATIENT' and lab_test.medical_record.patient_id == user_id:
+            elif user_role == 'PATIENT' and lab_test.encounter.medical_record.patient_id == user_id:
                 return lab_test
             else:
                 return None
@@ -1394,9 +1102,6 @@ class LabTestDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của xét nghiệm.
-        """
         lab_test = self.get_object(pk)
         if lab_test is None:
             return Response({"detail": "Lab test not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -1405,14 +1110,10 @@ class LabTestDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật xét nghiệm.
-        """
         lab_test = self.get_object(pk)
         if lab_test is None:
             return Response({"detail": "Lab test not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ, kỹ thuật viên và quản trị viên mới có thể cập nhật xét nghiệm
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'LAB_TECHNICIAN', 'ADMIN']:
             return Response({"detail": "You do not have permission to update lab tests."}, status=status.HTTP_403_FORBIDDEN)
@@ -1424,14 +1125,10 @@ class LabTestDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa xét nghiệm.
-        """
         lab_test = self.get_object(pk)
         if lab_test is None:
             return Response({"detail": "Lab test not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ bác sĩ và quản trị viên mới có thể xóa xét nghiệm
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete lab tests."}, status=status.HTTP_403_FORBIDDEN)
@@ -1449,36 +1146,26 @@ class LabResultListCreateAPIView(APIView):
     pagination_class = StandardResultsSetPagination
 
     def get(self, request):
-        """
-        Lấy danh sách kết quả xét nghiệm.
-        """
-        # Lấy thông tin từ JWT token
         user_role = request.auth.get('role', None) if request.auth else None
         user_id = request.user.id
 
-        # Khởi tạo queryset
         queryset = LabResult.objects.all()
 
-        # Nếu là bệnh nhân, chỉ trả về kết quả xét nghiệm trong hồ sơ của chính họ
         if user_role == 'PATIENT':
-            queryset = queryset.filter(lab_test__medical_record__patient_id=user_id)
+            queryset = queryset.filter(lab_test__encounter__medical_record__patient_id=user_id)
 
-        # Lọc theo lab_test_id nếu được cung cấp
         lab_test_id = request.query_params.get('lab_test_id', None)
         if lab_test_id is not None:
             queryset = queryset.filter(lab_test_id=lab_test_id)
 
-        # Tìm kiếm
         search = request.query_params.get('search', None)
         if search is not None:
             queryset = queryset.filter(result_value__icontains=search)
 
-        # Sắp xếp
         ordering = request.query_params.get('ordering', '-performed_at')
         if ordering:
             queryset = queryset.order_by(ordering)
 
-        # Phân trang
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
 
@@ -1490,29 +1177,23 @@ class LabResultListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """
-        Tạo mới kết quả xét nghiệm.
-        """
         serializer = LabResultSerializer(data=request.data)
         if serializer.is_valid():
-            # Lấy thông tin người dùng
             user_role = request.auth.get('role', None) if request.auth else None
             user_id = request.user.id
 
-            # Chỉ kỹ thuật viên và quản trị viên mới có thể tạo kết quả xét nghiệm
             if user_role not in ['LAB_TECHNICIAN', 'ADMIN']:
                 return Response({"detail": "You do not have permission to create lab results."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Kiểm tra quyền truy cập vào xét nghiệm
             lab_test_id = request.data.get('lab_test')
             try:
+                from .models import LabTest
                 lab_test = LabTest.objects.get(pk=lab_test_id)
-                if user_role == 'PATIENT' and lab_test.medical_record.patient_id != user_id:
+                if user_role == 'PATIENT' and lab_test.encounter.medical_record.patient_id != user_id:
                     return Response({"detail": "You do not have permission to add results to this lab test."}, status=status.HTTP_403_FORBIDDEN)
             except LabTest.DoesNotExist:
                 return Response({"detail": "Lab test not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Lưu thông tin người thực hiện xét nghiệm
             serializer.save(performed_by=user_id, performed_at=timezone.now())
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1525,19 +1206,14 @@ class LabResultDetailAPIView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
-        """
-        Lấy đối tượng kết quả xét nghiệm dựa trên primary key.
-        """
         try:
             lab_result = LabResult.objects.get(pk=pk)
-
-            # Kiểm tra quyền truy cập
             user_role = self.request.auth.get('role', None) if self.request.auth else None
             user_id = self.request.user.id
 
             if user_role in ['DOCTOR', 'ADMIN', 'NURSE', 'LAB_TECHNICIAN']:
                 return lab_result
-            elif user_role == 'PATIENT' and lab_result.lab_test.medical_record.patient_id == user_id:
+            elif user_role == 'PATIENT' and lab_result.lab_test.encounter.medical_record.patient_id == user_id:
                 return lab_result
             else:
                 return None
@@ -1545,9 +1221,6 @@ class LabResultDetailAPIView(APIView):
             return None
 
     def get(self, request, pk):
-        """
-        Lấy thông tin chi tiết của kết quả xét nghiệm.
-        """
         lab_result = self.get_object(pk)
         if lab_result is None:
             return Response({"detail": "Lab result not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -1556,14 +1229,10 @@ class LabResultDetailAPIView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Cập nhật kết quả xét nghiệm.
-        """
         lab_result = self.get_object(pk)
         if lab_result is None:
             return Response({"detail": "Lab result not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ kỹ thuật viên và quản trị viên mới có thể cập nhật kết quả xét nghiệm
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['LAB_TECHNICIAN', 'ADMIN']:
             return Response({"detail": "You do not have permission to update lab results."}, status=status.HTTP_403_FORBIDDEN)
@@ -1575,17 +1244,85 @@ class LabResultDetailAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """
-        Xóa kết quả xét nghiệm.
-        """
         lab_result = self.get_object(pk)
         if lab_result is None:
             return Response({"detail": "Lab result not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Chỉ kỹ thuật viên và quản trị viên mới có thể xóa kết quả xét nghiệm
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['LAB_TECHNICIAN', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete lab results."}, status=status.HTTP_403_FORBIDDEN)
 
         lab_result.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+# API cho Encounter
+class EncounterListCreateAPIView(APIView):
+    """
+    API endpoint để lấy danh sách và tạo mới phiên khám của bệnh nhân.
+    """
+    permission_classes = [CanViewMedicalRecords]
+    pagination_class = StandardResultsSetPagination
+    authentication_classes = [CustomJWTAuthentication]
+
+    def get(self, request):
+        user_role = request.auth.get('role', None) if request.auth else None
+        user_id = request.user.id
+        queryset = Encounter.objects.all()
+        # Nếu người dùng là bệnh nhân, chỉ lấy phiên khám của chính họ
+        if user_role == 'PATIENT':
+            queryset = queryset.filter(medical_record__patient_id=user_id)
+        ordering = request.query_params.get('ordering', '-encounter_date')
+        if ordering:
+            queryset = queryset.order_by(ordering)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request)
+        if page is not None:
+            serializer = EncounterSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        serializer = EncounterSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = EncounterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EncounterDetailAPIView(APIView):
+    """
+    API endpoint để xem, cập nhật và xóa một phiên khám.
+    """
+    permission_classes = [CanViewMedicalRecords]
+    authentication_classes = [CustomJWTAuthentication]
+
+    def get_object(self, pk):
+        try:
+            return Encounter.objects.get(pk=pk)
+        except Encounter.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        encounter = self.get_object(pk)
+        if encounter is None:
+            return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = EncounterSerializer(encounter)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        encounter = self.get_object(pk)
+        if encounter is None:
+            return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = EncounterSerializer(encounter, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        encounter = self.get_object(pk)
+        if encounter is None:
+            return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
+        encounter.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

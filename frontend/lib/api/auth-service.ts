@@ -1,249 +1,274 @@
 import apiClient from "./api-client"
 
-export interface LoginRequest {
+interface LoginCredentials {
   email: string
   password: string
-  role?: string
 }
 
-export interface RegisterRequest {
-  first_name: string
-  last_name: string
+interface RegisterData {
   email: string
   password: string
   password_confirm: string
+  first_name: string
+  last_name: string
   role: string
+  gender?: string
+  phone_number?: string
+  birth_date?: string
 }
 
-export interface AuthResponse {
+interface AuthResponse {
+  access: string
+  refresh: string
   user: {
-    id: string
+    id: number
+    email: string
     first_name: string
     last_name: string
-    email: string
     role: string
+    gender?: string
+    phone_number?: string
+    birth_date?: string
   }
-  access: string  // JWT access token
-  refresh: string  // JWT refresh token
 }
 
 const AuthService = {
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      console.log('Calling login API with data:', data)
-      const response = await apiClient.post("/auth/login/", data)
-      console.log('Login API response:', response.data)
+      console.log("[DEBUG] Calling login API...");
+      const response = await apiClient.post("/api/auth/login/", credentials);
+      console.log("[DEBUG] Login API response:", {
+        hasAccess: !!response.data.access,
+        hasRefresh: !!response.data.refresh,
+        hasUser: !!response.data.user
+      });
 
-      // Lưu token vào localStorage (chỉ ở phía client)
-      if (typeof window !== 'undefined') {
-        console.log('Saving tokens to localStorage:', {
-          access: response.data.access ? 'exists' : 'missing',
-          refresh: response.data.refresh ? 'exists' : 'missing'
-        })
-        if (response.data.access) {
-          localStorage.setItem("token", response.data.access)
-          console.log('Access token saved to localStorage')
-        } else {
-          console.error('Access token missing in response')
+      // Lưu token và thông tin người dùng
+      if (response.data.access && response.data.refresh) {
+        console.log("[DEBUG] Saving tokens to localStorage...");
+        // Lưu trực tiếp vào localStorage
+        if (typeof window !== "undefined") {
+          localStorage.setItem("token", response.data.access);
+          localStorage.setItem("refreshToken", response.data.refresh);
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+          if (response.data.user?.role) {
+            localStorage.setItem("userRole", response.data.user.role);
+          }
+
+          // Kiểm tra xem token đã được lưu chưa
+          console.log("[DEBUG] Checking localStorage after saving:", {
+            token: localStorage.getItem("token") ? "Saved" : "Not saved",
+            refreshToken: localStorage.getItem("refreshToken") ? "Saved" : "Not saved",
+            user: localStorage.getItem("user") ? "Saved" : "Not saved",
+            userRole: localStorage.getItem("userRole")
+          });
         }
 
-        if (response.data.refresh) {
-          localStorage.setItem("refreshToken", response.data.refresh)
-          console.log('Refresh token saved to localStorage')
-        } else {
-          console.error('Refresh token missing in response')
-        }
+        // Gọi các phương thức helper
+        this.setTokens(response.data.access, response.data.refresh);
+        this.saveUserInfo(response.data.user);
+      } else {
+        console.log("[DEBUG] No tokens in response");
       }
 
+      return response.data;
+    } catch (error: any) {
+      console.error("Login error:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  async register(data: RegisterData): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post("/api/auth/register/", data)
+      // Lưu token và thông tin người dùng nếu đăng ký thành công
+      if (response.data.access && response.data.refresh) {
+        this.setTokens(response.data.access, response.data.refresh)
+        this.saveUserInfo(response.data.user)
+      }
       return response.data
-    } catch (error) {
-      console.error('Login API error:', error)
-
-      // Xử lý lỗi từ API
-      if (error.response && error.response.data) {
-        const errorData = error.response.data
-        console.log('Error data from API:', errorData)
-
-        // Kiểm tra lỗi đăng nhập
-        if (errorData.detail) {
-          throw new Error(errorData.detail)
-        }
-
-        if (errorData.non_field_errors) {
-          throw new Error(errorData.non_field_errors.join(', '))
-        }
-
-        // Xử lý các lỗi khác
-        const errorMessages = []
-        for (const field in errorData) {
-          if (Array.isArray(errorData[field])) {
-            errorMessages.push(`${field}: ${errorData[field].join(', ')}`)
-          } else if (typeof errorData[field] === 'string') {
-            errorMessages.push(`${field}: ${errorData[field]}`)
-          }
-        }
-
-        if (errorMessages.length > 0) {
-          throw new Error(errorMessages.join('\n'))
-        }
-      }
-
-      // Nếu không có thông tin lỗi cụ thể, sử dụng thông báo lỗi chung
-      throw new Error('Lỗi đăng nhập. Vui lòng kiểm tra email và mật khẩu.')
-    }
-  },
-
-  register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    try {
-      console.log('Calling register API with data:', data)
-      const response = await apiClient.post("/auth/register/", data)
-      console.log('Register API response:', response.data)
-
-      // Lưu token vào localStorage (chỉ ở phía client)
-      if (typeof window !== 'undefined') {
-        console.log('Saving tokens to localStorage:', {
-          access: response.data.access ? 'exists' : 'missing',
-          refresh: response.data.refresh ? 'exists' : 'missing'
-        })
-        if (response.data.access) {
-          localStorage.setItem("token", response.data.access)
-          console.log('Access token saved to localStorage')
-        } else {
-          console.error('Access token missing in response')
-        }
-
-        if (response.data.refresh) {
-          localStorage.setItem("refreshToken", response.data.refresh)
-          console.log('Refresh token saved to localStorage')
-        } else {
-          console.error('Refresh token missing in response')
-        }
-      }
-
-      return response.data
-    } catch (error) {
-      console.error('Register API error:', error)
-
-      // Xử lý lỗi từ API
-      if (error.response && error.response.data) {
-        const errorData = error.response.data
-        console.log('Error data from API:', errorData)
-
-        // Kiểm tra lỗi email đã tồn tại
-        if (errorData.email && Array.isArray(errorData.email) && errorData.email.some(msg => msg.includes('user with this email already exists'))) {
-          throw new Error('Email đã được sử dụng. Vui lòng chọn email khác.')
-        }
-
-        // Xử lý các lỗi khác
-        const errorMessages = []
-        for (const field in errorData) {
-          if (Array.isArray(errorData[field])) {
-            errorMessages.push(`${field}: ${errorData[field].join(', ')}`)
-          } else if (typeof errorData[field] === 'string') {
-            errorMessages.push(`${field}: ${errorData[field]}`)
-          }
-        }
-
-        if (errorMessages.length > 0) {
-          throw new Error(errorMessages.join('\n'))
-        }
-      }
-
-      // Nếu không có thông tin lỗi cụ thể, sử dụng thông báo lỗi chung
-      throw new Error('Lỗi đăng ký tài khoản. Vui lòng thử lại sau.')
-    }
-  },
-
-  forgotPassword: async (email: string): Promise<{ message: string }> => {
-    const response = await apiClient.post("/auth/forgot-password/", { email })
-    return response.data
-  },
-
-  resetPassword: async (token: string, password: string): Promise<{ message: string }> => {
-    const response = await apiClient.post("/auth/reset-password/", { token, password })
-    return response.data
-  },
-
-  logout: async (): Promise<void> => {
-    try {
-      await apiClient.post("/auth/logout/")
-    } catch (error) {
-      console.error("Logout error:", error)
-    } finally {
-      // Luôn xóa token khỏi localStorage (chỉ ở phía client)
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem("token")
-        localStorage.removeItem("refreshToken")
-      }
-    }
-  },
-
-  getCurrentUser: async (): Promise<AuthResponse["user"]> => {
-    try {
-      console.log('Calling getCurrentUser API...')
-
-      // Thay vì gọi API /users/me/, chúng ta sử dụng thông tin từ token JWT
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token')
-        console.log('Token from localStorage:', token ? 'exists' : 'not found')
-
-        if (token) {
-          // Parse JWT token
-          try {
-            // Kiểm tra token có đúng định dạng JWT không (xxx.yyy.zzz)
-            const parts = token.split('.')
-            if (parts.length !== 3) {
-              console.error('Invalid token format: token does not have 3 parts')
-              throw new Error('Invalid token format')
-            }
-
-            const base64Url = parts[1]
-            if (!base64Url) {
-              console.error('Invalid token format: payload part is missing')
-              throw new Error('Invalid token format')
-            }
-
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-
-            // Sử dụng atob an toàn hơn với try-catch
-            let decodedString
-            try {
-              decodedString = atob(base64)
-            } catch (e) {
-              console.error('Error decoding base64:', e)
-              throw new Error('Invalid token encoding')
-            }
-
-            const jsonPayload = decodeURIComponent(
-              decodedString.split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-              }).join('')
-            )
-
-            const payload = JSON.parse(jsonPayload)
-            console.log('Token payload:', payload)
-
-            // Trích xuất thông tin người dùng từ payload
-            return {
-              id: payload.user_id,
-              first_name: payload.first_name,
-              last_name: payload.last_name,
-              email: payload.email,
-              role: payload.role
-            }
-          } catch (parseError) {
-            console.error('Error parsing JWT token:', parseError)
-            throw new Error('Invalid token format')
-          }
-        }
-      }
-
-      throw new Error('No token available')
-    } catch (error) {
-      console.error('getCurrentUser error:', error)
+    } catch (error: any) {
+      console.error("Register error:", error.response?.data || error.message)
       throw error
     }
   },
+
+  async logout(refreshToken: string): Promise<void> {
+    // Xóa token trước tiên để đảm bảo người dùng luôn được đăng xuất
+    this.clearTokens()
+    console.log("Tokens cleared successfully")
+
+    // Nếu không có refresh token, không cần gọi API
+    if (!refreshToken || refreshToken === "mock_refresh_token") {
+      return
+    }
+
+    try {
+      // Gọi API đăng xuất để blacklist token trên server
+      // Thử cả hai cách gọi API
+      try {
+        // Cách 1: Sử dụng refresh_token
+        await apiClient.post("/api/auth/logout/", { refresh_token: refreshToken })
+        console.log("Logout API call successful with refresh_token parameter")
+        return
+      } catch (error1) {
+        console.log("First logout attempt failed, trying with refresh parameter")
+
+        try {
+          // Cách 2: Sử dụng refresh
+          await apiClient.post("/api/auth/logout/", { refresh: refreshToken })
+          console.log("Logout API call successful with refresh parameter")
+        } catch (error2: any) {
+          // Nếu cả hai cách đều thất bại, ghi log lỗi
+          console.error("Logout API error:",
+            error2.response?.data || error2.message || "Unknown error")
+        }
+      }
+    } catch (error: any) {
+      // Xử lý lỗi chung
+      console.error("Logout error:", error.message || "Unknown error")
+    }
+  },
+
+  async refreshToken(refreshToken: string): Promise<{ access: string }> {
+    try {
+      const response = await apiClient.post("/api/auth/token/refresh/", { refresh: refreshToken })
+      return response.data
+    } catch (error: any) {
+      console.error("Token refresh error:", error.response?.data || error.message)
+      throw error
+    }
+  },
+
+  async validateToken(): Promise<{ valid: boolean; user: any }> {
+    try {
+      // Kiểm tra xem có token trong localStorage không
+      const token = this.getToken();
+      if (!token) {
+        return { valid: false, user: null };
+      }
+
+      // Gọi API để xác thực token
+      const response = await apiClient.get("/api/auth/validate-token/");
+
+      // API Gateway trả về thông tin người dùng nếu token hợp lệ, hoặc các trường null nếu token không hợp lệ
+      if (response.data && response.data.id && response.data.email && response.data.role) {
+        // Trả về thông tin người dùng với valid=true
+        return {
+          valid: true,
+          user: {
+            id: response.data.id,
+            email: response.data.email,
+            role: response.data.role,
+            first_name: response.data.first_name,
+            last_name: response.data.last_name
+          }
+        };
+      } else {
+        // Nếu API không trả về thông tin người dùng hợp lệ, thử lấy từ localStorage
+        const savedUser = this.getUserInfo();
+        if (savedUser) {
+          return { valid: true, user: savedUser };
+        }
+      }
+
+      // Nếu không có thông tin người dùng hợp lệ, trả về token không hợp lệ
+      return { valid: false, user: null };
+    } catch (error: any) {
+      console.error("Token validation error:", error.response?.data || error.message);
+
+      // Nếu gặp lỗi khi gọi API, thử lấy thông tin người dùng từ localStorage
+      try {
+        const savedUser = this.getUserInfo();
+        if (savedUser) {
+          return { valid: true, user: savedUser };
+        }
+      } catch (localStorageError) {
+        console.error("Lỗi khi lấy thông tin người dùng từ localStorage:", localStorageError);
+      }
+
+      return { valid: false, user: null };
+    }
+  },
+
+  getToken(): string | null {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("token")
+    }
+    return null
+  },
+
+  getRefreshToken(): string | null {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("refreshToken")
+    }
+    return null
+  },
+
+  setTokens(access: string, refresh: string): void {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("token", access);
+        localStorage.setItem("refreshToken", refresh);
+      } catch (error) {
+        console.error("Lỗi khi lưu token vào localStorage:", error);
+      }
+    }
+  },
+
+  clearTokens(): void {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("userRole");
+      } catch (error) {
+        console.error("Lỗi khi xóa token:", error);
+      }
+    }
+  },
+
+  isAuthenticated(): boolean {
+    return !!this.getToken()
+  },
+
+  saveUserInfo(user: any): void {
+    if (typeof window !== "undefined") {
+      try {
+        const userJson = JSON.stringify(user);
+        localStorage.setItem("user", userJson);
+
+        if (user.role) {
+          localStorage.setItem("userRole", user.role);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lưu thông tin người dùng vào localStorage:", error);
+      }
+    }
+  },
+
+  getUserInfo(): any {
+    if (typeof window !== "undefined") {
+      const userJson = localStorage.getItem("user")
+      if (userJson) {
+        try {
+          return JSON.parse(userJson)
+        } catch (error) {
+          console.error("Lỗi khi phân tích thông tin người dùng:", error)
+          return null
+        }
+      }
+    }
+    return null
+  },
+
+  getUserRole(): string | null {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("userRole")
+    }
+    return null
+  }
 }
 
 export default AuthService

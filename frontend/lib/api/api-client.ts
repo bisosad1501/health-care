@@ -1,17 +1,25 @@
 import axios from "axios"
 
-// Tạo instance axios với cấu hình mặc định
+// Lấy URL API từ biến môi trường hoặc sử dụng URL mặc định
+// Lưu ý: Để tránh lặp lại /api/ trong URL, chúng ta sẽ sử dụng URL gốc
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+
+console.log("API URL:", API_URL) // Ghi log để debug
+
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api",
+  baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  // Thêm timeout để tránh chờ quá lâu
+  timeout: 10000,
 })
 
-// Thêm interceptor để xử lý token authentication
+// Interceptor để thêm token vào header
 apiClient.interceptors.request.use(
   (config) => {
-    if (typeof window !== 'undefined') {
+    // Thêm token vào header nếu có
+    if (typeof window !== "undefined") {
       const token = localStorage.getItem("token")
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
@@ -20,11 +28,12 @@ apiClient.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error("Request error:", error)
     return Promise.reject(error)
   },
 )
 
-// Thêm interceptor để xử lý refresh token
+// Interceptor để xử lý refresh token khi token hết hạn
 apiClient.interceptors.response.use(
   (response) => {
     return response
@@ -32,41 +41,52 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    // Kiểm tra xem lỗi có phải do mạng không
+    if (error.message === "Network Error") {
+      console.error("Network error - không thể kết nối đến API:", API_URL)
+      return Promise.reject({
+        ...error,
+        response: {
+          data: {
+            detail: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn hoặc thử lại sau.",
+          },
+        },
+      })
+    }
+
     // Nếu lỗi 401 (Unauthorized) và chưa thử refresh token
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
       try {
-        // Gọi API refresh token (chỉ ở phía client)
-        let refreshToken = null
-        if (typeof window !== 'undefined') {
-          refreshToken = localStorage.getItem("refreshToken")
-        }
-
+        // Lấy refresh token từ localStorage
+        const refreshToken = localStorage.getItem("refreshToken")
         if (!refreshToken) {
-          throw new Error('No refresh token available')
+          // Không có refresh token, chuyển hướng đến trang đăng nhập
+          if (typeof window !== "undefined") {
+            window.location.href = "/login"
+          }
+          return Promise.reject(error)
         }
 
-        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"}/auth/token/refresh/`, {
-          refresh_token: refreshToken,
+        // Gọi API refresh token
+        const response = await axios.post(`${API_URL}/api/auth/token/refresh/`, {
+          refresh: refreshToken,
         })
 
-        // Lưu token mới (chỉ ở phía client)
-        const { access_token, refresh_token } = response.data
-        if (typeof window !== 'undefined') {
-          localStorage.setItem("token", access_token)
-          localStorage.setItem("refreshToken", refresh_token || refreshToken)
-          console.log('Tokens refreshed and saved to localStorage')
-        }
+        // Lưu token mới
+        const { access } = response.data
+        localStorage.setItem("token", access)
 
-        // Cập nhật header và thực hiện lại request
-        apiClient.defaults.headers.common["Authorization"] = `Bearer ${access_token}`
+        // Thử lại request ban đầu với token mới
+        originalRequest.headers.Authorization = `Bearer ${access}`
         return apiClient(originalRequest)
       } catch (refreshError) {
-        // Nếu refresh token thất bại, đăng xuất người dùng (chỉ ở phía client)
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem("token")
-          localStorage.removeItem("refreshToken")
+        console.error("Refresh token error:", refreshError)
+        // Refresh token thất bại, đăng xuất người dùng
+        localStorage.removeItem("token")
+        localStorage.removeItem("refreshToken")
+        if (typeof window !== "undefined") {
           window.location.href = "/login"
         }
         return Promise.reject(refreshError)
@@ -76,5 +96,28 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+// Method trợ giúp để kiểm tra thông tin người dùng hiện tại
+apiClient.getCurrentUser = async function() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No token found when getting current user');
+      return null;
+    }
+
+    // Log token đang dùng để debug
+    console.log('Using token for getCurrentUser:', `${token.substring(0, 15)}...`);
+
+    // Gọi API để lấy thông tin người dùng hiện tại
+    const response = await this.get('/api/users/me/');
+    console.log('Current user API response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting current user:', error.response?.status, error.response?.data || error.message);
+
+    return null;
+  }
+};
 
 export default apiClient

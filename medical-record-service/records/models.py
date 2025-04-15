@@ -3,7 +3,7 @@ from django.utils import timezone
 
 class MedicalRecord(models.Model):
     """Hồ sơ y tế tổng thể của bệnh nhân"""
-    patient_id = models.IntegerField(help_text="ID của bệnh nhân trong user-service")
+    patient_id = models.IntegerField(help_text="ID của bệnh nhân trong user-service", unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -14,9 +14,26 @@ class MedicalRecord(models.Model):
         verbose_name = "Medical Record"
         verbose_name_plural = "Medical Records"
 
+class Encounter(models.Model):
+    """Phiên khám bệnh - mỗi lần bệnh nhân đến khám"""
+    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='encounters')
+    encounter_date = models.DateTimeField(default=timezone.now)
+    doctor_id = models.IntegerField(help_text="ID của bác sĩ phụ trách phiên khám", null=True, blank=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Encounter on {self.encounter_date.strftime('%Y-%m-%d %H:%M')}"
+
+    class Meta:
+        verbose_name = "Encounter"
+        verbose_name_plural = "Encounters"
+        ordering = ['-encounter_date']
+
 class Diagnosis(models.Model):
-    """Chẩn đoán bệnh"""
-    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='diagnoses')
+    """Chẩn đoán bệnh thuộc phiên khám"""
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='diagnoses')
     doctor_id = models.IntegerField(help_text="ID của bác sĩ trong user-service")
     diagnosis_code = models.CharField(max_length=20, help_text="Mã chẩn đoán (ICD-10)")
     diagnosis_description = models.TextField()
@@ -34,7 +51,7 @@ class Diagnosis(models.Model):
         ordering = ['-diagnosis_date']
 
 class Treatment(models.Model):
-    """Phương pháp điều trị"""
+    """Phương pháp điều trị cho chẩn đoán"""
     TREATMENT_TYPE_CHOICES = [
         ('MEDICATION', 'Medication'),
         ('SURGERY', 'Surgery'),
@@ -61,7 +78,7 @@ class Treatment(models.Model):
         ordering = ['-start_date']
 
 class Allergy(models.Model):
-    """Thông tin về dị ứng"""
+    """Thông tin dị ứng – dữ liệu chung thuộc MedicalRecord"""
     SEVERITY_CHOICES = [
         ('MILD', 'Mild'),
         ('MODERATE', 'Moderate'),
@@ -87,8 +104,8 @@ class Allergy(models.Model):
         unique_together = ['medical_record', 'allergy_name']
 
 class Immunization(models.Model):
-    """Thông tin về tiêm chủng"""
-    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='immunizations')
+    """Thông tin tiêm chủng thuộc phiên khám"""
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='immunizations')
     vaccine_name = models.CharField(max_length=100)
     administration_date = models.DateField()
     dose = models.CharField(max_length=20, help_text="Liều lượng hoặc số thứ tự của mũi tiêm")
@@ -106,7 +123,7 @@ class Immunization(models.Model):
         ordering = ['-administration_date']
 
 class MedicalHistory(models.Model):
-    """Lịch sử bệnh án"""
+    """Lịch sử bệnh án – dữ liệu chung thuộc MedicalRecord"""
     medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='medical_histories')
     condition_name = models.CharField(max_length=100)
     diagnosis_date = models.DateField()
@@ -126,7 +143,7 @@ class MedicalHistory(models.Model):
         ordering = ['-diagnosis_date']
 
 class Medication(models.Model):
-    """Thông tin về thuốc đang sử dụng"""
+    """Thông tin thuốc được kê trong phiên khám"""
     FREQUENCY_CHOICES = [
         ('ONCE', 'Once daily'),
         ('TWICE', 'Twice daily'),
@@ -136,7 +153,7 @@ class Medication(models.Model):
         ('OTHER', 'Other'),
     ]
 
-    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='medications')
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='medications')
     medication_name = models.CharField(max_length=100)
     dosage = models.CharField(max_length=50)
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
@@ -158,7 +175,7 @@ class Medication(models.Model):
         ordering = ['-start_date']
 
 class VitalSign(models.Model):
-    """Dấu hiệu sinh tồn"""
+    """Dấu hiệu sinh tồn thu thập trong phiên khám"""
     VITAL_TYPE_CHOICES = [
         ('TEMPERATURE', 'Temperature'),
         ('BLOOD_PRESSURE', 'Blood Pressure'),
@@ -171,7 +188,7 @@ class VitalSign(models.Model):
         ('OTHER', 'Other'),
     ]
 
-    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='vital_signs')
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='vital_signs')
     vital_type = models.CharField(max_length=50, choices=VITAL_TYPE_CHOICES)
     value = models.CharField(max_length=50)
     unit = models.CharField(max_length=20)
@@ -190,7 +207,7 @@ class VitalSign(models.Model):
         ordering = ['-recorded_at']
 
 class LabTest(models.Model):
-    """Xét nghiệm y tế"""
+    """Xét nghiệm y tế trong phiên khám"""
     STATUS_CHOICES = [
         ('ORDERED', 'Ordered'),
         ('COLLECTED', 'Specimen Collected'),
@@ -199,7 +216,7 @@ class LabTest(models.Model):
         ('CANCELLED', 'Cancelled'),
     ]
 
-    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='lab_tests')
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='lab_tests')
     test_name = models.CharField(max_length=100)
     test_code = models.CharField(max_length=50, blank=True, null=True)
     ordered_by = models.IntegerField(help_text="ID của bác sĩ trong user-service")
@@ -219,7 +236,7 @@ class LabTest(models.Model):
         ordering = ['-ordered_at']
 
 class LabResult(models.Model):
-    """Kết quả xét nghiệm"""
+    """Kết quả xét nghiệm của LabTest"""
     lab_test = models.ForeignKey(LabTest, on_delete=models.CASCADE, related_name='results')
     result_value = models.CharField(max_length=100)
     unit = models.CharField(max_length=20, blank=True, null=True)

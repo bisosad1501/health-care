@@ -1,232 +1,388 @@
+"use client"
+
+import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Activity,
-  Calendar,
-  FileText,
-  HeartPulse,
-  Home,
-  LogOut,
-  MessageSquare,
-  Settings,
-  Stethoscope,
-  User,
-  Users,
-} from "lucide-react"
-import DoctorAppointments from "@/components/doctor/doctor-appointments"
-import DoctorPatients from "@/components/doctor/doctor-patients"
+import { CalendarDays, ClipboardList, UserRound, Pill, FileText } from "lucide-react"
+import { DashboardStat, DashboardStatsGrid } from "@/components/dashboard/dashboard-stats"
+import { DashboardBarChart, DashboardPieChart } from "@/components/dashboard/dashboard-chart"
+import { DashboardActivity } from "@/components/dashboard/dashboard-activity"
+import { DashboardTable } from "@/components/dashboard/dashboard-table"
+import { PageHeader } from "@/components/layout/page-header"
+
+// Dữ liệu mẫu cho biểu đồ
+const appointmentData = [
+  { month: "T1", scheduled: 45, completed: 40, cancelled: 5 },
+  { month: "T2", scheduled: 50, completed: 45, cancelled: 5 },
+  { month: "T3", scheduled: 60, completed: 55, cancelled: 5 },
+  { month: "T4", scheduled: 70, completed: 65, cancelled: 5 },
+  { month: "T5", scheduled: 65, completed: 60, cancelled: 5 },
+  { month: "T6", scheduled: 75, completed: 70, cancelled: 5 },
+]
+
+const diagnosisData = [
+  { name: "Cảm cúm", value: 35, color: "#0088FE" },
+  { name: "Viêm họng", value: 25, color: "#00C49F" },
+  { name: "Đau lưng", value: 15, color: "#FFBB28" },
+  { name: "Dị ứng", value: 10, color: "#FF8042" },
+  { name: "Khác", value: 15, color: "#8884D8" },
+]
+
+// Dữ liệu mẫu cho lịch hẹn
+const appointments = [
+  {
+    id: 1,
+    patientName: "Nguyễn Văn A",
+    date: new Date(2025, 3, 12),
+    time: "09:00 - 09:30",
+    reason: "Khám định kỳ",
+    status: "confirmed",
+  },
+  {
+    id: 2,
+    patientName: "Trần Thị B",
+    date: new Date(2025, 3, 12),
+    time: "10:00 - 10:30",
+    reason: "Đau đầu",
+    status: "confirmed",
+  },
+  {
+    id: 3,
+    patientName: "Lê Văn C",
+    date: new Date(2025, 3, 12),
+    time: "11:00 - 11:30",
+    reason: "Đau lưng",
+    status: "confirmed",
+  },
+  {
+    id: 4,
+    patientName: "Phạm Thị D",
+    date: new Date(2025, 3, 13),
+    time: "09:00 - 09:30",
+    reason: "Khám theo dõi",
+    status: "scheduled",
+  },
+]
+
+// Dữ liệu mẫu cho bệnh nhân
+const patients = [
+  {
+    id: 1,
+    name: "Nguyễn Văn A",
+    age: 45,
+    gender: "Nam",
+    lastVisit: "05/04/2025",
+    condition: "Ổn định",
+  },
+  {
+    id: 2,
+    name: "Trần Thị B",
+    age: 32,
+    gender: "Nữ",
+    lastVisit: "03/04/2025",
+    condition: "Đang điều trị",
+  },
+  {
+    id: 3,
+    name: "Lê Văn C",
+    age: 58,
+    gender: "Nam",
+    lastVisit: "01/04/2025",
+    condition: "Theo dõi",
+  },
+  {
+    id: 4,
+    name: "Phạm Thị D",
+    age: 27,
+    gender: "Nữ",
+    lastVisit: "28/03/2025",
+    condition: "Ổn định",
+  },
+]
+
+// Dữ liệu mẫu cho hoạt động gần đây
+const recentActivities = [
+  {
+    id: 1,
+    title: "Kết quả xét nghiệm mới",
+    description: "Kết quả xét nghiệm của bệnh nhân Nguyễn Văn A đã có",
+    timestamp: "Hôm nay, 10:30",
+    icon: <FileText className="h-5 w-5" />,
+    status: "info",
+  },
+  {
+    id: 2,
+    title: "Lịch hẹn mới",
+    description: "Bệnh nhân Trần Thị B đã đặt lịch hẹn",
+    timestamp: "Hôm qua, 15:45",
+    icon: <CalendarDays className="h-5 w-5" />,
+    status: "success",
+  },
+  {
+    id: 3,
+    title: "Đơn thuốc đã cấp",
+    description: "Đơn thuốc cho bệnh nhân Lê Văn C đã được cấp",
+    timestamp: "2 ngày trước, 09:15",
+    icon: <Pill className="h-5 w-5" />,
+    status: "success",
+  },
+]
 
 export default function DoctorDashboard() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <div className="flex items-center gap-2">
-            <HeartPulse className="h-6 w-6 text-teal-600" />
-            <h1 className="text-xl font-bold">Healthcare System</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Avatar>
-              <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Doctor" />
-              <AvatarFallback>DR</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </header>
-      <div className="flex flex-1">
-        <aside className="hidden w-64 border-r bg-background lg:block">
-          <div className="flex h-full flex-col gap-2 p-4">
-            <div className="flex items-center gap-2 px-2 py-4">
-              <Avatar>
-                <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Doctor" />
-                <AvatarFallback>DR</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">Dr. Sarah Johnson</p>
-                <p className="text-xs text-muted-foreground">Cardiologist</p>
-              </div>
-            </div>
-            <nav className="grid gap-1 px-2 py-2">
-              <Link href="/dashboard/doctor">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Home className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/dashboard/doctor/appointments">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Appointments
-                </Button>
-              </Link>
-              <Link href="/dashboard/doctor/patients">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Users className="h-4 w-4" />
-                  Patients
-                </Button>
-              </Link>
-              <Link href="/dashboard/doctor/records">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <FileText className="h-4 w-4" />
-                  Medical Records
-                </Button>
-              </Link>
-              <Link href="/dashboard/doctor/prescriptions">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Stethoscope className="h-4 w-4" />
-                  Prescriptions
-                </Button>
-              </Link>
-              <Link href="/dashboard/doctor/tests">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Activity className="h-4 w-4" />
-                  Lab Orders
-                </Button>
-              </Link>
-              <Link href="/dashboard/doctor/profile">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <User className="h-4 w-4" />
-                  Profile
-                </Button>
-              </Link>
-              <Link href="/dashboard/doctor/settings">
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Button>
-              </Link>
-            </nav>
-            <div className="mt-auto">
-              <Link href="/login">
-                <Button variant="ghost" className="w-full justify-start gap-2 text-red-500 hover:text-red-500">
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </aside>
-        <main className="flex-1">
-          <div className="container py-6">
-            <h2 className="mb-6 text-3xl font-bold">Doctor Dashboard</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Today's Appointments</span>
-                    <Calendar className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">8</h3>
-                    <span className="ml-2 text-xs font-medium text-muted-foreground">Next: 10:30 AM</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Patients Seen Today</span>
-                    <Users className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">3</h3>
-                    <span className="ml-2 text-xs font-medium text-green-600">+1 from yesterday</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Pending Lab Results</span>
-                    <Activity className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">5</h3>
-                    <span className="ml-2 text-xs font-medium text-red-600">2 urgent</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Messages</span>
-                    <MessageSquare className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div className="mt-2 flex items-baseline">
-                    <h3 className="text-2xl font-bold">12</h3>
-                    <span className="ml-2 text-xs font-medium text-red-600">4 unread</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+    <div className="space-y-6">
+      <PageHeader title="Bảng điều khiển Bác sĩ" description="Quản lý lịch khám, bệnh nhân và hồ sơ y tế">
+        <Link href="/dashboard/doctor/examination">
+          <Button variant="outline" size="sm" className="h-9">
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Khám bệnh
+          </Button>
+        </Link>
+        <Link href="/dashboard/doctor/appointments">
+          <Button variant="outline" size="sm" className="h-9">
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Lịch hẹn
+          </Button>
+        </Link>
+        <Link href="/dashboard/doctor/patients">
+          <Button variant="outline" size="sm" className="h-9">
+            <UserRound className="mr-2 h-4 w-4" />
+            Bệnh nhân
+          </Button>
+        </Link>
+      </PageHeader>
 
-            <div className="mt-6">
-              <Tabs defaultValue="appointments">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="appointments">Today's Schedule</TabsTrigger>
-                  <TabsTrigger value="patients">Recent Patients</TabsTrigger>
-                </TabsList>
-                <TabsContent value="appointments" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Today's Schedule</CardTitle>
-                      <CardDescription>Your appointments for today, {new Date().toLocaleDateString()}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <DoctorAppointments />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="patients" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Recent Patients</CardTitle>
-                      <CardDescription>Patients you've seen in the last 7 days</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <DoctorPatients />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </main>
+      <DashboardStatsGrid>
+        <DashboardStat
+          title="Lịch hẹn hôm nay"
+          value="12"
+          icon={<CalendarDays className="h-4 w-4" />}
+          trend={{ value: "+2 so với hôm qua", positive: true }}
+        />
+        <DashboardStat
+          title="Bệnh nhân đang điều trị"
+          value="28"
+          icon={<UserRound className="h-4 w-4" />}
+          trend={{ value: "+4 trong tuần này", positive: true }}
+        />
+        <DashboardStat
+          title="Đơn thuốc đã kê"
+          value="45"
+          icon={<Pill className="h-4 w-4" />}
+          trend={{ value: "+8 trong tuần này", positive: true }}
+        />
+        <DashboardStat
+          title="Xét nghiệm chờ kết quả"
+          value="7"
+          icon={<FileText className="h-4 w-4" />}
+          trend={{ value: "-2 so với hôm qua", positive: false }}
+        />
+      </DashboardStatsGrid>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Suspense fallback={<div>Đang tải...</div>}>
+          <DashboardBarChart
+            title="Thống kê cuộc hẹn"
+            description="Số lượng cuộc hẹn theo tháng"
+            data={appointmentData}
+            categories={{
+              scheduled: {
+                label: "Đã lên lịch",
+                color: "hsl(var(--chart-1))",
+              },
+              completed: {
+                label: "Đã hoàn thành",
+                color: "hsl(var(--chart-2))",
+              },
+              cancelled: {
+                label: "Đã hủy",
+                color: "hsl(var(--chart-6))",
+              },
+            }}
+            xAxisKey="month"
+            stacked={true}
+          />
+        </Suspense>
+        <Suspense fallback={<div>Đang tải...</div>}>
+          <DashboardPieChart
+            title="Phân loại chẩn đoán"
+            description="Tỷ lệ các loại chẩn đoán trong tháng"
+            data={diagnosisData}
+          />
+        </Suspense>
       </div>
-      <footer className="border-t bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <p className="text-sm text-muted-foreground">© 2025 Healthcare System. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
-  )
-}
 
-function Bell(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-    </svg>
+      <div className="grid gap-6 md:grid-cols-2">
+        <DashboardTable
+          title="Lịch hẹn hôm nay"
+          description="Danh sách các cuộc hẹn trong ngày"
+          columns={[
+            {
+              key: "time",
+              header: "Thời gian",
+              cell: (item: any) => <div>{item.time}</div>,
+            },
+            {
+              key: "patientName",
+              header: "Bệnh nhân",
+              cell: (item: any) => <div className="font-medium">{item.patientName}</div>,
+            },
+            {
+              key: "reason",
+              header: "Lý do khám",
+              cell: (item: any) => <div>{item.reason}</div>,
+            },
+            {
+              key: "status",
+              header: "Trạng thái",
+              cell: (item: any) => (
+                <div
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    item.status === "confirmed"
+                      ? "bg-green-100 text-green-800"
+                      : item.status === "scheduled"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {item.status === "confirmed"
+                    ? "Đã xác nhận"
+                    : item.status === "scheduled"
+                      ? "Đã lên lịch"
+                      : "Chưa xác định"}
+                </div>
+              ),
+            },
+          ]}
+          data={appointments.filter(
+            (a) =>
+              a.date.getDate() === new Date().getDate() &&
+              a.date.getMonth() === new Date().getMonth() &&
+              a.date.getFullYear() === new Date().getFullYear(),
+          )}
+          keyField="id"
+          actions={
+            <Link href="/dashboard/doctor/appointments">
+              <Button variant="outline" size="sm">
+                Xem tất cả
+              </Button>
+            </Link>
+          }
+        />
+        <DashboardActivity
+          title="Hoạt động gần đây"
+          description="Các hoạt động và thông báo gần đây"
+          items={recentActivities}
+        />
+      </div>
+
+      <Tabs defaultValue="appointments" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="appointments">Lịch hẹn sắp tới</TabsTrigger>
+          <TabsTrigger value="patients">Bệnh nhân gần đây</TabsTrigger>
+        </TabsList>
+        <TabsContent value="appointments" className="space-y-4">
+          <DashboardTable
+            title="Lịch hẹn sắp tới"
+            description="Danh sách các cuộc hẹn sắp tới của bạn với bệnh nhân"
+            columns={[
+              {
+                key: "date",
+                header: "Ngày",
+                cell: (item: any) => <div>{item.date.toLocaleDateString("vi-VN")}</div>,
+              },
+              {
+                key: "time",
+                header: "Thời gian",
+                cell: (item: any) => <div>{item.time}</div>,
+              },
+              {
+                key: "patientName",
+                header: "Bệnh nhân",
+                cell: (item: any) => <div className="font-medium">{item.patientName}</div>,
+              },
+              {
+                key: "reason",
+                header: "Lý do khám",
+                cell: (item: any) => <div>{item.reason}</div>,
+              },
+              {
+                key: "status",
+                header: "Trạng thái",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.status === "confirmed"
+                        ? "bg-green-100 text-green-800"
+                        : item.status === "scheduled"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {item.status === "confirmed"
+                      ? "Đã xác nhận"
+                      : item.status === "scheduled"
+                        ? "Đã lên lịch"
+                        : "Chưa xác định"}
+                  </div>
+                ),
+              },
+            ]}
+            data={appointments}
+            keyField="id"
+          />
+        </TabsContent>
+        <TabsContent value="patients" className="space-y-4">
+          <DashboardTable
+            title="Bệnh nhân gần đây"
+            description="Danh sách bệnh nhân bạn đã khám gần đây"
+            columns={[
+              {
+                key: "name",
+                header: "Họ tên",
+                cell: (item: any) => <div className="font-medium">{item.name}</div>,
+              },
+              {
+                key: "age",
+                header: "Tuổi",
+                cell: (item: any) => <div>{item.age}</div>,
+              },
+              {
+                key: "gender",
+                header: "Giới tính",
+                cell: (item: any) => <div>{item.gender}</div>,
+              },
+              {
+                key: "lastVisit",
+                header: "Lần khám gần nhất",
+                cell: (item: any) => <div>{item.lastVisit}</div>,
+              },
+              {
+                key: "condition",
+                header: "Tình trạng",
+                cell: (item: any) => (
+                  <div
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.condition === "Ổn định"
+                        ? "bg-green-100 text-green-800"
+                        : item.condition === "Đang điều trị"
+                          ? "bg-blue-100 text-blue-800"
+                          : item.condition === "Theo dõi"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {item.condition}
+                  </div>
+                ),
+              },
+            ]}
+            data={patients}
+            keyField="id"
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }

@@ -6,46 +6,46 @@ export default function AdminActivityLog() {
   const activities = [
     {
       id: "1",
-      user: "Dr. Sarah Johnson",
-      action: "Created medical record",
-      resource: "Medical Record #MR-2025-0042",
-      timestamp: "Today, 10:45 AM",
+      user: "BS. Nguyễn Thị Hương",
+      action: "Tạo hồ sơ y tế",
+      resource: "Hồ sơ y tế #MR-2025-0042",
+      timestamp: "Hôm nay, 10:45",
       ipAddress: "192.168.1.105",
       severity: "info",
     },
     {
       id: "2",
-      user: "Admin User",
-      action: "Updated user permissions",
-      resource: "User: Emma Wilson (Nurse)",
-      timestamp: "Today, 09:30 AM",
+      user: "Quản trị viên",
+      action: "Cập nhật quyền người dùng",
+      resource: "Người dùng: Lê Thị Lan (Y tá)",
+      timestamp: "Hôm nay, 09:30",
       ipAddress: "192.168.1.100",
       severity: "warning",
     },
     {
       id: "3",
-      user: "System",
-      action: "Backup completed",
-      resource: "Database",
-      timestamp: "Today, 03:00 AM",
-      ipAddress: "System",
+      user: "Hệ thống",
+      action: "Sao lưu hoàn tất",
+      resource: "Cơ sở dữ liệu",
+      timestamp: "Hôm nay, 03:00",
+      ipAddress: "Hệ thống",
       severity: "info",
     },
     {
       id: "4",
-      user: "Michael Chen",
-      action: "Failed login attempt",
-      resource: "Authentication",
-      timestamp: "Yesterday, 11:52 PM",
+      user: "Phạm Văn Minh",
+      action: "Đăng nhập thất bại",
+      resource: "Xác thực",
+      timestamp: "Hôm qua, 23:52",
       ipAddress: "203.0.113.42",
       severity: "error",
     },
     {
       id: "5",
-      user: "Lisa Brown",
-      action: "Added new user",
-      resource: "User: Robert Davis (Doctor)",
-      timestamp: "Yesterday, 02:15 PM",
+      user: "Hoàng Thị Mai",
+      action: "Thêm người dùng mới",
+      resource: "Người dùng: Nguyễn Văn An (Bác sĩ)",
+      timestamp: "Hôm qua, 14:15",
       ipAddress: "192.168.1.100",
       severity: "info",
     },
@@ -56,17 +56,16 @@ export default function AdminActivityLog() {
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1">
-            <Calendar className="h-3.5 w-3.5" />
-            Last 7 days
+            <Calendar className="h-3.5 w-3.5" />7 ngày qua
           </Button>
           <Button variant="outline" size="sm" className="gap-1">
             <Filter className="h-3.5 w-3.5" />
-            Filter
+            Lọc
           </Button>
         </div>
         <Button variant="outline" size="sm" className="gap-1">
           <Download className="h-3.5 w-3.5" />
-          Export
+          Xuất
         </Button>
       </div>
 
@@ -86,7 +85,7 @@ export default function AdminActivityLog() {
                           : "bg-blue-50 text-blue-700 hover:bg-blue-50 hover:text-blue-700"
                     }
                   >
-                    {activity.severity}
+                    {activity.severity === "error" ? "Lỗi" : activity.severity === "warning" ? "Cảnh báo" : "Thông tin"}
                   </Badge>
                   <h4 className="font-medium">{activity.action}</h4>
                 </div>
@@ -107,7 +106,7 @@ export default function AdminActivityLog() {
             <div className="mt-2 flex justify-end">
               <Button variant="ghost" size="sm" className="gap-1">
                 <Eye className="h-3.5 w-3.5" />
-                View Details
+                Xem chi tiết
               </Button>
             </div>
           </div>

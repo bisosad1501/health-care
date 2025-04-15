@@ -1,5 +1,5 @@
 const express = require('express');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken } = require('../middleware/auth'); // Bạn có thể xóa dòng import này nếu không dùng nữa
 const config = require('../config');
 const {
   userServiceProxy,
@@ -26,18 +26,18 @@ router.use('/api/auth/sessions', require('./auth'));
 
 // Token validation endpoint for microservices
 router.get('/api/auth/validate-token', (req, res) => {
-  // If verifyToken middleware passes, the token is valid
-  // Return user information from the token
+  // Nếu không có verifyToken, req.user có thể undefined
+  // Bạn có thể điều chỉnh logic ở đây nếu cần thiết
   res.status(200).json({
-    id: req.user.id,
-    email: req.user.email,
-    role: req.user.role,
-    first_name: req.user.first_name,
-    last_name: req.user.last_name
+    id: req.user ? req.user.id : null,
+    email: req.user ? req.user.email : null,
+    role: req.user ? req.user.role : null,
+    first_name: req.user ? req.user.first_name : null,
+    last_name: req.user ? req.user.last_name : null
   });
 });
 
-// Protected routes (authentication required)
+// Protected routes (authentication not enforced at gateway level)
 // Special route for /api/users/me/
 router.get('/api/users/me/', (req, res) => {
   console.log('User info request received:', req.method, req.url);
@@ -78,10 +78,10 @@ router.use('/api/contact-info', userServiceProxy);
 router.use('/api/documents', userServiceProxy);
 router.use('/api/admin', userServiceProxy);
 router.use('/api/insurance-information', userServiceProxy);
-router.use('/api/insurance-providers', verifyToken, userServiceProxy);
+router.use('/api/insurance-providers', userServiceProxy);
 
 // Direct test endpoint for debugging
-router.get('/api/appointments/test', verifyToken, (req, res, next) => {
+router.get('/api/appointments/test', (req, res, next) => {
   console.log('[DEBUG] Forwarding to test endpoint');
   console.log('User from token:', req.user);
 
@@ -92,9 +92,9 @@ router.get('/api/appointments/test', verifyToken, (req, res, next) => {
   // Add headers from token
   const headers = {
     'Authorization': req.headers.authorization,
-    'X-User-ID': req.user.user_id || req.user.id,
-    'X-User-Role': req.user.role,
-    'X-User-Email': req.user.email
+    'X-User-ID': req.user ? (req.user.user_id || req.user.id) : '',
+    'X-User-Role': req.user ? req.user.role : '',
+    'X-User-Email': req.user ? req.user.email : ''
   };
 
   // Call the service directly
@@ -112,7 +112,7 @@ router.get('/api/appointments/test', verifyToken, (req, res, next) => {
 });
 
 // Direct access to patient-appointments endpoint
-router.get('/api/direct/patient-appointments', verifyToken, (req, res) => {
+router.get('/api/direct/patient-appointments', (req, res) => {
   console.log('[DEBUG] Direct access to patient-appointments');
   console.log('User from token:', req.user);
 
@@ -123,11 +123,11 @@ router.get('/api/direct/patient-appointments', verifyToken, (req, res) => {
   // Add headers from token
   const headers = {
     'Authorization': req.headers.authorization,
-    'X-User-ID': req.user.user_id || req.user.id,
-    'X-User-Role': req.user.role,
-    'X-User-Email': req.user.email,
-    'X-User-First-Name': req.user.first_name || '',
-    'X-User-Last-Name': req.user.last_name || ''
+    'X-User-ID': req.user ? (req.user.user_id || req.user.id) : '',
+    'X-User-Role': req.user ? req.user.role : '',
+    'X-User-Email': req.user ? req.user.email : '',
+    'X-User-First-Name': req.user ? req.user.first_name || '' : '',
+    'X-User-Last-Name': req.user ? req.user.last_name || '' : ''
   };
 
   console.log('Sending request to:', `${appointmentServiceUrl}/api/appointments/patient-appointments/`);
@@ -153,26 +153,25 @@ router.get('/api/direct/patient-appointments', verifyToken, (req, res) => {
 });
 
 // Appointment Service routes
-router.use('/api/appointments/patient-appointments', verifyToken, appointmentServiceProxy);
-router.use('/api/appointments', verifyToken, appointmentServiceProxy);
-router.use('/api/doctor-availabilities', verifyToken, appointmentServiceProxy);
-router.use('/api/time-slots', verifyToken, appointmentServiceProxy);
-router.use('/api/appointment-reminders', verifyToken, appointmentServiceProxy);
+router.use('/api/appointments', appointmentServiceProxy);
+router.use('/api/doctor-availabilities', appointmentServiceProxy);
+router.use('/api/time-slots', appointmentServiceProxy);
+router.use('/api/appointment-reminders', appointmentServiceProxy);
 
 // Medical Record Service routes
-router.use('/api/medical-records', verifyToken, medicalRecordServiceProxy);
-router.use('/api/diagnoses', verifyToken, medicalRecordServiceProxy);
-router.use('/api/treatments', verifyToken, medicalRecordServiceProxy);
-router.use('/api/allergies', verifyToken, medicalRecordServiceProxy);
-router.use('/api/immunizations', verifyToken, medicalRecordServiceProxy);
-router.use('/api/medical-histories', verifyToken, medicalRecordServiceProxy);
-router.use('/api/medications', verifyToken, medicalRecordServiceProxy);
-router.use('/api/vital-signs', verifyToken, medicalRecordServiceProxy);
-router.use('/api/lab-tests', verifyToken, medicalRecordServiceProxy);
-router.use('/api/lab-results', verifyToken, medicalRecordServiceProxy);
+router.use('/api/medical-records', medicalRecordServiceProxy);
+router.use('/api/diagnoses', medicalRecordServiceProxy);
+router.use('/api/treatments', medicalRecordServiceProxy);
+router.use('/api/allergies', medicalRecordServiceProxy);
+router.use('/api/immunizations', medicalRecordServiceProxy);
+router.use('/api/medical-histories', medicalRecordServiceProxy);
+router.use('/api/medications', medicalRecordServiceProxy);
+router.use('/api/vital-signs', medicalRecordServiceProxy);
+router.use('/api/lab-tests', medicalRecordServiceProxy);
+router.use('/api/lab-results', medicalRecordServiceProxy);
 
 // Pharmacy Service routes
-router.use('/api/pharmacy', verifyToken, (req, res, next) => {
+router.use('/api/pharmacy', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     console.log(`[PHARMACY] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
@@ -188,7 +187,7 @@ router.use('/api/pharmacy', verifyToken, (req, res, next) => {
 });
 
 // Billing Service routes
-router.use('/api/invoices', verifyToken, (req, res, next) => {
+router.use('/api/invoices', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     console.log(`[BILLING] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
@@ -209,7 +208,7 @@ router.use('/api/invoices', verifyToken, (req, res, next) => {
 });
 
 // Invoice Items routes (part of Billing Service)
-router.use('/api/invoice-items', verifyToken, (req, res, next) => {
+router.use('/api/invoice-items', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     req.headers['X-User-Role'] = req.user.role;
@@ -228,7 +227,7 @@ router.use('/api/invoice-items', verifyToken, (req, res, next) => {
 });
 
 // Payments routes (part of Billing Service)
-router.use('/api/payments', verifyToken, (req, res, next) => {
+router.use('/api/payments', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     req.headers['X-User-Role'] = req.user.role;
@@ -247,7 +246,7 @@ router.use('/api/payments', verifyToken, (req, res, next) => {
 });
 
 // Insurance claims routes (part of Billing Service)
-router.use('/api/insurance-claims', verifyToken, (req, res, next) => {
+router.use('/api/insurance-claims', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     console.log(`[BILLING] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
@@ -271,7 +270,7 @@ router.use('/api/insurance-claims', verifyToken, (req, res, next) => {
   billingServiceProxy(req, res, next);
 });
 // Laboratory Service routes
-router.use('/api/laboratory', verifyToken, (req, res, next) => {
+router.use('/api/laboratory', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     console.log(`[LABORATORY] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
@@ -286,7 +285,7 @@ router.use('/api/laboratory', verifyToken, (req, res, next) => {
 });
 
 // Notification Service routes
-router.use('/api/notifications', verifyToken, (req, res, next) => {
+router.use('/api/notifications', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
     console.log(`[NOTIFICATION] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
@@ -307,7 +306,7 @@ router.use('/api/notifications', verifyToken, (req, res, next) => {
 });
 
 // Special route for service-to-service event notifications
-router.post('/api/notifications/events', verifyToken, (req, res, next) => {
+router.post('/api/notifications/events', (req, res, next) => {
   console.log('[NOTIFICATION] Received event notification');
 
   // Add service info to headers

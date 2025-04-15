@@ -6,52 +6,52 @@ export default function DoctorAppointments() {
   const appointments = [
     {
       id: 1,
-      patient: "Emma Wilson",
+      patient: "Nguyễn Thị Hoa",
       age: 42,
-      reason: "Follow-up: Hypertension",
-      time: "10:30 AM",
-      duration: "30 min",
-      status: "Upcoming",
+      reason: "Tái khám: Tăng huyết áp",
+      time: "10:30",
+      duration: "30 phút",
+      status: "Sắp tới",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 2,
-      patient: "James Rodriguez",
+      patient: "Trần Văn Nam",
       age: 65,
-      reason: "Chest Pain Evaluation",
-      time: "11:15 AM",
-      duration: "45 min",
-      status: "Upcoming",
+      reason: "Đau ngực",
+      time: "11:15",
+      duration: "45 phút",
+      status: "Sắp tới",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 3,
-      patient: "Sophia Chen",
+      patient: "Lê Thị Lan",
       age: 38,
-      reason: "Annual Physical",
-      time: "1:00 PM",
-      duration: "60 min",
-      status: "Upcoming",
+      reason: "Khám sức khỏe định kỳ",
+      time: "13:00",
+      duration: "60 phút",
+      status: "Sắp tới",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 4,
-      patient: "Michael Brown",
+      patient: "Phạm Văn Minh",
       age: 55,
-      reason: "Post-Surgery Follow-up",
-      time: "2:15 PM",
-      duration: "30 min",
-      status: "Upcoming",
+      reason: "Tái khám sau phẫu thuật",
+      time: "14:15",
+      duration: "30 phút",
+      status: "Sắp tới",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: 5,
-      patient: "Olivia Martinez",
+      patient: "Hoàng Thị Mai",
       age: 29,
-      reason: "Medication Review",
-      time: "3:30 PM",
-      duration: "30 min",
-      status: "Upcoming",
+      reason: "Đánh giá thuốc",
+      time: "15:30",
+      duration: "30 phút",
+      status: "Sắp tới",
       avatar: "/placeholder.svg?height=40&width=40",
     },
   ]
@@ -65,7 +65,7 @@ export default function DoctorAppointments() {
         >
           <div className="flex items-start gap-4">
             <Avatar>
-              <AvatarImage src={appointment.avatar} alt={appointment.patient} />
+              <AvatarImage src={appointment.avatar || "/placeholder.svg"} alt={appointment.patient} />
               <AvatarFallback>
                 {appointment.patient
                   .split(" ")
@@ -76,7 +76,7 @@ export default function DoctorAppointments() {
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="font-medium">{appointment.patient}</h4>
-                <span className="text-sm text-muted-foreground">{appointment.age} yrs</span>
+                <span className="text-sm text-muted-foreground">{appointment.age} tuổi</span>
               </div>
               <p className="text-sm">{appointment.reason}</p>
               <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
@@ -90,10 +90,10 @@ export default function DoctorAppointments() {
           <div className="mt-4 flex items-center gap-2 md:mt-0">
             <Button variant="outline" size="sm" className="gap-1">
               <FileText className="h-3.5 w-3.5" />
-              Records
+              Hồ sơ
             </Button>
             <Button variant="default" size="sm">
-              Start
+              Bắt đầu
             </Button>
             <Button variant="ghost" size="icon">
               <MoreHorizontal className="h-4 w-4" />
