@@ -212,7 +212,17 @@ const AppointmentService = {
   },
 
   // Generate time slots from doctor availability
-  async generateTimeSlots(data: { doctor_id: number, start_date: string, end_date: string, slot_duration: number }): Promise<TimeSlot[]> {
+  async generateTimeSlots(data: {
+    doctor_id: number,
+    start_date?: string,
+    end_date?: string,
+    slot_duration: number,
+    specific_dates?: Array<{
+      date: string,
+      start_time: string,
+      end_time: string
+    }>
+  }): Promise<TimeSlot[]> {
     try {
       console.log("Generating time slots with data:", data);
       const response = await apiClient.post("/api/doctor-availabilities/generate_time_slots/", data);

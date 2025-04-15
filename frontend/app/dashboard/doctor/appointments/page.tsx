@@ -39,10 +39,18 @@ const availabilityFormSchema = z.object({
   is_available: z.boolean().default(true),
 })
 
-// Schema cho form tạo khung giờ
+// Schema cho form tạo khung giờ từ lịch làm việc
 const timeSlotFormSchema = z.object({
   start_date: z.date({ required_error: "Vui lòng chọn ngày bắt đầu" }),
   end_date: z.date({ required_error: "Vui lòng chọn ngày kết thúc" }),
+  slot_duration: z.string().min(1, { message: "Vui lòng chọn thời lượng khung giờ" }),
+})
+
+// Schema cho form tạo khung giờ cho ngày cụ thể
+const specificDateFormSchema = z.object({
+  date: z.date({ required_error: "Vui lòng chọn ngày" }),
+  start_time: z.string().min(1, { message: "Vui lòng nhập giờ bắt đầu" }),
+  end_time: z.string().min(1, { message: "Vui lòng nhập giờ kết thúc" }),
   slot_duration: z.string().min(1, { message: "Vui lòng chọn thời lượng khung giờ" }),
 })
 
@@ -71,12 +79,23 @@ export default function DoctorAppointmentsPage() {
     },
   })
 
-  // Form cho tạo khung giờ
+  // Form cho tạo khung giờ từ lịch làm việc
   const timeSlotForm = useForm<z.infer<typeof timeSlotFormSchema>>({
     resolver: zodResolver(timeSlotFormSchema),
     defaultValues: {
       start_date: new Date(),
       end_date: addDays(new Date(), 7),
+      slot_duration: "30",
+    },
+  })
+
+  // Form cho tạo khung giờ cho ngày cụ thể
+  const specificDateForm = useForm<z.infer<typeof specificDateFormSchema>>({
+    resolver: zodResolver(specificDateFormSchema),
+    defaultValues: {
+      date: new Date(),
+      start_time: "08:00",
+      end_time: "17:00",
       slot_duration: "30",
     },
   })
@@ -342,9 +361,55 @@ export default function DoctorAppointmentsPage() {
         end_date: addDays(new Date(), 7),
         slot_duration: "30",
       })
-      fetchTimeSlots()
     } catch (error) {
       console.error("Error generating time slots:", error)
+      toast.error("Không thể tạo khung giờ. Vui lòng thử lại sau.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Xử lý tạo khung giờ cho ngày cụ thể
+  const handleGenerateSpecificDateTimeSlots = async (values: z.infer<typeof specificDateFormSchema>) => {
+    if (!userId) {
+      toast.error("Không tìm thấy thông tin bác sĩ. Vui lòng đăng nhập lại.")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const specificDates = [
+        {
+          date: format(values.date, "yyyy-MM-dd"),
+          start_time: values.start_time,
+          end_time: values.end_time
+        }
+      ]
+
+      const data = {
+        doctor_id: userId,
+        slot_duration: parseInt(values.slot_duration),
+        specific_dates: specificDates
+      }
+
+      console.log("Generating specific date time slots with data:", data);
+
+      // Gọi API để tạo khung giờ
+      await appointmentService.generateTimeSlots(data)
+      toast.success("Tạo khung giờ cho ngày cụ thể thành công!")
+
+      // Làm mới danh sách khung giờ
+      fetchTimeSlots()
+
+      // Reset form
+      specificDateForm.reset({
+        date: new Date(),
+        start_time: "08:00",
+        end_time: "17:00",
+        slot_duration: "30",
+      })
+    } catch (error) {
+      console.error("Error generating specific date time slots:", error)
       toast.error("Không thể tạo khung giờ. Vui lòng thử lại sau.")
     } finally {
       setIsLoading(false)
@@ -898,6 +963,7 @@ export default function DoctorAppointmentsPage() {
                         <p>3. Bạn cần chọn <strong>khoảng thời gian</strong> muốn tạo khung giờ (từ ngày nào đến ngày nào)</p>
                         <p>4. Chọn <strong>thời lượng</strong> cho mỗi ca khám (30 phút là thông dụng)</p>
                         <p>5. Nhấn "Tạo khung giờ khám bệnh" để hệ thống tự động tạo các khung giờ</p>
+                        <p className="mt-4 pt-2 border-t border-blue-200"><strong>Tính năng mới:</strong> Bạn cũng có thể tạo khung giờ cho ngày cụ thể bằng cách gọi API <code>/api/doctor-availabilities/generate_time_slots/</code> với tham số <code>specific_dates</code>. Điều này cho phép tạo khung giờ cho các ngày đặc biệt không nằm trong lịch làm việc thường.</p>
                       </div>
                     </div>
 

@@ -99,15 +99,105 @@ class DoctorAvailabilityViewSet(viewsets.ModelViewSet):
     def generate_time_slots(self, request):
         """
         Generate time slots for a doctor based on their availability.
+
+        Supports two modes:
+        1. Generate slots for a date range based on weekly availability
+        2. Generate slots for specific dates with custom time ranges
         """
         doctor_id = request.data.get('doctor_id')
         start_date = request.data.get('start_date')
         end_date = request.data.get('end_date')
         slot_duration = request.data.get('slot_duration', 30)  # in minutes
+        specific_dates = request.data.get('specific_dates', None)  # Format: [{date: '2023-05-01', start_time: '09:00', end_time: '12:00'}, ...]
 
-        if not doctor_id or not start_date or not end_date:
+        if not doctor_id:
             return Response(
-                {"error": "doctor_id, start_date, and end_date are required"},
+                {"error": "doctor_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Mode 1: Generate slots for specific dates with custom time ranges
+        if specific_dates:
+            try:
+                time_slots = []
+                for date_info in specific_dates:
+                    date_str = date_info.get('date')
+                    start_time_str = date_info.get('start_time')
+                    end_time_str = date_info.get('end_time')
+
+                    if not date_str or not start_time_str or not end_time_str:
+                        return Response(
+                            {"error": "Each specific date must include date, start_time, and end_time"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    try:
+                        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                        start_time = datetime.strptime(start_time_str, '%H:%M').time()
+                        end_time = datetime.strptime(end_time_str, '%H:%M').time()
+                    except ValueError:
+                        return Response(
+                            {"error": "Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    # Convert time to minutes for easier calculation
+                    start_minutes = start_time.hour * 60 + start_time.minute
+                    end_minutes = end_time.hour * 60 + end_time.minute
+
+                    # Check if the time range is valid
+                    if start_minutes >= end_minutes:
+                        return Response(
+                            {"error": f"Invalid time range for date {date_str}: start time must be before end time"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    # Generate slots for this specific date and time range
+                    current_minutes = start_minutes
+                    while current_minutes + slot_duration <= end_minutes:
+                        slot_start_time = f"{current_minutes // 60:02d}:{current_minutes % 60:02d}"
+                        current_minutes += slot_duration
+                        slot_end_time = f"{current_minutes // 60:02d}:{current_minutes % 60:02d}"
+
+                        # Check if slot already exists
+                        existing_slot = TimeSlot.objects.filter(
+                            doctor_id=doctor_id,
+                            date=date,
+                            start_time=slot_start_time,
+                            end_time=slot_end_time
+                        ).first()
+
+                        if existing_slot:
+                            # If slot exists but is not available, we can skip it
+                            if not existing_slot.is_available:
+                                continue
+                            # If slot exists and is available, we can add it to our list without creating a new one
+                            time_slots.append(existing_slot)
+                        else:
+                            # Create time slot
+                            time_slot = TimeSlot.objects.create(
+                                doctor_id=doctor_id,
+                                date=date,
+                                start_time=slot_start_time,
+                                end_time=slot_end_time,
+                                is_available=True,
+                                location=request.data.get('location', None)
+                            )
+                            time_slots.append(time_slot)
+
+                # Serialize and return the created time slots
+                serializer = TimeSlotSerializer(time_slots, many=True)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response(
+                    {"error": f"Error generating time slots for specific dates: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        # Mode 2: Generate slots for a date range based on weekly availability
+        if not start_date or not end_date:
+            return Response(
+                {"error": "start_date and end_date are required for date range mode"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -156,12 +246,20 @@ class DoctorAvailabilityViewSet(viewsets.ModelViewSet):
                     slot_end_time = f"{current_minutes // 60:02d}:{current_minutes % 60:02d}"
 
                     # Check if slot already exists
-                    if not TimeSlot.objects.filter(
+                    existing_slot = TimeSlot.objects.filter(
                         doctor_id=doctor_id,
                         date=current_date,
                         start_time=slot_start_time,
                         end_time=slot_end_time
-                    ).exists():
+                    ).first()
+
+                    if existing_slot:
+                        # If slot exists but is not available, we can skip it
+                        if not existing_slot.is_available:
+                            continue
+                        # If slot exists and is available, we can add it to our list without creating a new one
+                        time_slots.append(existing_slot)
+                    else:
                         # Create time slot
                         time_slot = TimeSlot.objects.create(
                             doctor_id=doctor_id,
