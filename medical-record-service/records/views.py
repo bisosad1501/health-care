@@ -2,8 +2,13 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, action
+from rest_framework.viewsets import ViewSet
 from django.db.models import Q
 from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 from .models import (
     MedicalRecord, Encounter, Diagnosis, Treatment, Allergy,
     Immunization, MedicalHistory, Medication,
@@ -13,20 +18,82 @@ from .serializers import (
     MedicalRecordSerializer, MedicalRecordSummarySerializer,
     DiagnosisSerializer, TreatmentSerializer, AllergySerializer,
     ImmunizationSerializer, MedicalHistorySerializer, MedicationSerializer,
-    VitalSignSerializer, LabTestSerializer, LabResultSerializer
+    VitalSignSerializer, LabTestSerializer, LabResultSerializer,
+    EncounterSerializer
 )
 from .permissions import (
     CanViewMedicalRecords, CanCreateMedicalRecord, CanUpdateMedicalRecord,
     CanDeleteMedicalRecord, CanShareMedicalRecord, IsAdmin, IsDoctor, IsNurse,
-    IsPatient, IsLabTechnician, IsPharmacist
+    IsPatient, IsLabTechnician, IsPharmacist, IsServiceRequest
 )
 from .authentication import CustomJWTAuthentication
-from .services import UserService
+from .services import UserService, AppointmentService
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+@api_view(['POST'])
+@authentication_classes([CustomJWTAuthentication])
+@permission_classes([IsDoctor])
+def create_encounter_from_appointment(request, appointment_id):
+    """
+    API endpoint để tạo Encounter từ Appointment.
+    """
+    # Lấy token xác thực từ request
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+    auth_token = None
+    if auth_header and auth_header.startswith('Bearer '):
+        auth_token = auth_header.split(' ')[1]
+
+    # Lấy thông tin appointment từ appointment-service
+    appointment_data = AppointmentService.get_appointment_info(appointment_id, auth_token)
+
+    if not appointment_data:
+        return Response({"detail": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Kiểm tra trạng thái appointment
+    if appointment_data.get('status') != 'CONFIRMED':
+        return Response({"detail": "Only confirmed appointments can be converted to encounters."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Kiểm tra quyền của bác sĩ
+    user_id = request.user.id
+    doctor_id = appointment_data.get('doctor_id')
+
+    if int(user_id) != int(doctor_id) and request.auth.get('role') != 'ADMIN':
+        return Response({"detail": "You do not have permission to create an encounter for this appointment."}, status=status.HTTP_403_FORBIDDEN)
+
+    # Lấy hoặc tạo medical record cho bệnh nhân
+    patient_id = appointment_data.get('patient_id')
+    medical_record = None
+
+    try:
+        medical_record = MedicalRecord.objects.get(patient_id=patient_id)
+    except MedicalRecord.DoesNotExist:
+        medical_record = MedicalRecord.objects.create(patient_id=patient_id)
+
+    # Tạo encounter
+    encounter_data = {
+        'medical_record': medical_record.id,
+        'doctor_id': doctor_id,
+        'appointment_id': appointment_id,
+        'encounter_date': appointment_data.get('appointment_date'),
+        'chief_complaint': appointment_data.get('reason', ''),
+        'encounter_type': 'OUTPATIENT',
+        'notes': f"Created from appointment #{appointment_id}"
+    }
+
+    serializer = EncounterSerializer(data=encounter_data)
+    if serializer.is_valid():
+        encounter = serializer.save()
+
+        # Cập nhật trạng thái appointment thành COMPLETED
+        AppointmentService.update_appointment_status(appointment_id, 'COMPLETED', auth_token)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # API cho Medical Record
 class MedicalRecordListCreateAPIView(APIView):
@@ -81,7 +148,7 @@ class MedicalRecordDetailAPIView(APIView):
     """
     API endpoint để xem, cập nhật và xóa hồ sơ y tế.
     """
-    permission_classes = [CanViewMedicalRecords]
+    permission_classes = [IsServiceRequest | CanViewMedicalRecords]
     authentication_classes = [CustomJWTAuthentication]
 
     def get_object(self, pk):
@@ -228,7 +295,7 @@ class DiagnosisListCreateAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class DiagnosisDetailAPIView(APIView):
+class DiagnosisDetailAPIView(ViewSet):
     """
     API endpoint để xem, cập nhật và xóa chẩn đoán.
     """
@@ -250,7 +317,7 @@ class DiagnosisDetailAPIView(APIView):
         except Diagnosis.DoesNotExist:
             return None
 
-    def get(self, request, pk):
+    def retrieve(self, request, pk=None):
         diagnosis = self.get_object(pk)
         if diagnosis is None:
             return Response({"detail": "Diagnosis not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
@@ -267,7 +334,7 @@ class DiagnosisDetailAPIView(APIView):
 
         return Response(data)
 
-    def put(self, request, pk):
+    def update(self, request, pk=None):
         diagnosis = self.get_object(pk)
         if diagnosis is None:
             return Response({"detail": "Diagnosis not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
@@ -282,7 +349,7 @@ class DiagnosisDetailAPIView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk):
+    def destroy(self, request, pk=None):
         diagnosis = self.get_object(pk)
         if diagnosis is None:
             return Response({"detail": "Diagnosis not found or you do not have permission to delete it."}, status=status.HTTP_404_NOT_FOUND)
@@ -293,6 +360,105 @@ class DiagnosisDetailAPIView(APIView):
 
         diagnosis.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def add_prescription(self, request, pk):
+        """
+        Thêm ID đơn thuốc vào danh sách đơn thuốc của chẩn đoán.
+        """
+        diagnosis = self.get_object(pk)
+        if diagnosis is None:
+            return Response({"detail": "Diagnosis not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
+
+        prescription_id = request.data.get('prescription_id')
+        if not prescription_id:
+            return Response({"detail": "prescription_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lấy danh sách đơn thuốc hiện tại
+        prescription_ids = diagnosis.prescription_ids or []
+
+        # Thêm ID đơn thuốc mới nếu chưa tồn tại
+        if prescription_id not in prescription_ids:
+            prescription_ids.append(prescription_id)
+            diagnosis.prescription_ids = prescription_ids
+            diagnosis.save(update_fields=['prescription_ids'])
+
+        serializer = DiagnosisSerializer(diagnosis)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def create_prescription(self, request, pk):
+        """
+        Tạo đơn thuốc mới từ chẩn đoán và gửi đến pharmacy-service.
+        """
+        diagnosis = self.get_object(pk)
+        if diagnosis is None:
+            return Response({"detail": "Diagnosis not found or you do not have permission to update it."}, status=status.HTTP_404_NOT_FOUND)
+
+        user_role = request.auth.get('role', None) if request.auth else None
+        user_id = request.user.id
+
+        if user_role not in ['DOCTOR', 'ADMIN']:
+            return Response({"detail": "You do not have permission to create prescriptions."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Lấy thông tin bệnh nhân từ encounter
+        encounter = diagnosis.encounter
+        medical_record = encounter.medical_record
+        patient_id = medical_record.patient_id
+
+        # Chuẩn bị dữ liệu cho đơn thuốc
+        prescription_data = {
+            'diagnosis_id': diagnosis.id,
+            'encounter_id': encounter.id,
+            'patient_id': patient_id,
+            'doctor_id': diagnosis.doctor_id,
+            'diagnosis_code': diagnosis.diagnosis_code,
+            'diagnosis_description': diagnosis.diagnosis_description,
+            'notes': request.data.get('notes', ''),
+            'items': request.data.get('items', [])
+        }
+
+        # Lấy token xác thực từ request
+        auth_token = request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '') if 'HTTP_AUTHORIZATION' in request.META else None
+
+        # Gọi API đến pharmacy-service
+        from .services import PharmacyService
+        prescription = PharmacyService.create_prescription_from_diagnosis(prescription_data, auth_token)
+
+        if prescription:
+            # Thêm ID đơn thuốc vào danh sách đơn thuốc của chẩn đoán
+            prescription_id = prescription.get('id')
+            prescription_ids = diagnosis.prescription_ids or []
+            if prescription_id not in prescription_ids:
+                prescription_ids.append(prescription_id)
+                diagnosis.prescription_ids = prescription_ids
+                diagnosis.save(update_fields=['prescription_ids'])
+
+            return Response({
+                'message': 'Prescription created successfully',
+                'prescription': prescription,
+                'diagnosis': DiagnosisSerializer(diagnosis).data
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"detail": "Failed to create prescription."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'])
+    def prescriptions(self, request, pk):
+        """
+        Lấy danh sách đơn thuốc của chẩn đoán từ pharmacy-service.
+        """
+        diagnosis = self.get_object(pk)
+        if diagnosis is None:
+            return Response({"detail": "Diagnosis not found or you do not have permission to view it."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Lấy token xác thực từ request
+        auth_token = request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '') if 'HTTP_AUTHORIZATION' in request.META else None
+
+        # Gọi API đến pharmacy-service
+        from .services import PharmacyService
+        prescriptions = PharmacyService.get_prescriptions_by_diagnosis(diagnosis.id, auth_token)
+
+        return Response(prescriptions)
 
 # API cho Treatment
 class TreatmentListCreateAPIView(APIView):
@@ -1075,7 +1241,45 @@ class LabTestListCreateAPIView(APIView):
             except Encounter.DoesNotExist:
                 return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            serializer.save(ordered_by=user_id, ordered_at=timezone.now())
+            # Lưu yêu cầu xét nghiệm trong medical-record-service
+            lab_test = serializer.save(ordered_by=user_id, ordered_at=timezone.now())
+
+            # Đồng bộ với laboratory-service
+            from .services import LaboratoryService
+            auth_token = request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '') if 'HTTP_AUTHORIZATION' in request.META else None
+
+            # Lấy thông tin test_type dựa trên test_code
+            test_type_id = 1  # Mặc định là loại xét nghiệm đầu tiên
+
+            # Nếu có test_code, thử tìm test_type tương ứng
+            if lab_test.test_code:
+                test_type = LaboratoryService.get_test_type_by_code(lab_test.test_code, auth_token)
+                if test_type:
+                    test_type_id = test_type.get('id')
+
+            # Tạo dữ liệu cho laboratory-service
+            lab_test_data = {
+                'patient_id': encounter.medical_record.patient_id,
+                'doctor_id': user_id,
+                'test_type': test_type_id,
+                'notes': lab_test.notes,
+                'scheduled_date': lab_test.ordered_at.isoformat()
+            }
+
+            # Gọi API đến laboratory-service
+            lab_service_response = LaboratoryService.create_lab_test(lab_test_data, auth_token)
+
+            # Log response
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Laboratory service response: {lab_service_response}")
+
+            # Cập nhật trường lab_service_id trong LabTest
+            if lab_service_response:
+                lab_test.lab_service_id = lab_service_response.get('id')
+                lab_test.save(update_fields=['lab_service_id'])
+                logger.info(f"Updated lab_test with lab_service_id: {lab_service_response.get('id')}")
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1120,7 +1324,16 @@ class LabTestDetailAPIView(APIView):
 
         serializer = LabTestSerializer(lab_test, data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            updated_lab_test = serializer.save()
+
+            # Đồng bộ với laboratory-service
+            if updated_lab_test.lab_service_id:
+                from .services import LaboratoryService
+                auth_token = request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '') if 'HTTP_AUTHORIZATION' in request.META else None
+
+                # Cập nhật trạng thái của lab test trong laboratory-service
+                LaboratoryService.update_lab_test_status(updated_lab_test.lab_service_id, updated_lab_test.status, auth_token)
+
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1132,6 +1345,14 @@ class LabTestDetailAPIView(APIView):
         user_role = request.auth.get('role', None) if request.auth else None
         if user_role not in ['DOCTOR', 'ADMIN']:
             return Response({"detail": "You do not have permission to delete lab tests."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Đồng bộ với laboratory-service
+        if lab_test.lab_service_id:
+            from .services import LaboratoryService
+            auth_token = request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '') if 'HTTP_AUTHORIZATION' in request.META else None
+
+            # Cập nhật trạng thái của lab test trong laboratory-service
+            LaboratoryService.update_lab_test_status(lab_test.lab_service_id, 'CANCELLED', auth_token)
 
         lab_test.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -1194,7 +1415,33 @@ class LabResultListCreateAPIView(APIView):
             except LabTest.DoesNotExist:
                 return Response({"detail": "Lab test not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            serializer.save(performed_by=user_id, performed_at=timezone.now())
+            # Lưu kết quả xét nghiệm trong medical-record-service
+            lab_result = serializer.save(performed_by=user_id, performed_at=timezone.now())
+
+            # Đồng bộ với laboratory-service
+            if lab_test.lab_service_id:
+                from .services import LaboratoryService
+                auth_token = request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '') if 'HTTP_AUTHORIZATION' in request.META else None
+
+                # Tạo dữ liệu cho laboratory-service
+                result_data = {
+                    'lab_test': lab_test.lab_service_id,
+                    'technician_id': user_id,
+                    'result_value': lab_result.result_value,
+                    'is_abnormal': lab_result.is_abnormal,
+                    'comments': lab_result.notes
+                }
+
+                # Gọi API đến laboratory-service
+                LaboratoryService.create_test_result(result_data, auth_token)
+
+                # Cập nhật trạng thái của lab test trong laboratory-service
+                LaboratoryService.update_lab_test_status(lab_test.lab_service_id, 'COMPLETED', auth_token)
+
+            # Cập nhật trạng thái của lab test trong medical-record-service
+            lab_test.status = 'COMPLETED'
+            lab_test.save(update_fields=['status'])
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1254,7 +1501,7 @@ class LabResultDetailAPIView(APIView):
 
         lab_result.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
 # API cho Encounter
 class EncounterListCreateAPIView(APIView):
     """
@@ -1314,9 +1561,51 @@ class EncounterDetailAPIView(APIView):
         encounter = self.get_object(pk)
         if encounter is None:
             return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Lưu trạng thái cũ để kiểm tra thay đổi
+        old_status = encounter.status if hasattr(encounter, 'status') else None
+
         serializer = EncounterSerializer(encounter, data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            updated_encounter = serializer.save()
+
+            # Kiểm tra nếu trạng thái đã thay đổi thành COMPLETED
+            new_status = updated_encounter.status if hasattr(updated_encounter, 'status') else None
+
+            if new_status == 'COMPLETED' and old_status != 'COMPLETED':
+                # Tạo hóa đơn cho cuộc gặp đã hoàn thành
+                try:
+                    from .integrations import create_invoice_from_medical_record, send_notification
+
+                    # Lấy token xác thực từ request
+                    auth_header = request.META.get('HTTP_AUTHORIZATION')
+
+                    # Tạo hóa đơn
+                    invoice = create_invoice_from_medical_record(
+                        medical_record=updated_encounter.medical_record,
+                        encounter=updated_encounter,
+                        token=auth_header
+                    )
+
+                    if invoice:
+                        logger.info(f"Created invoice for encounter {updated_encounter.id}: {invoice.get('id')}")
+
+                        # Gửi thông báo về hóa đơn cho bệnh nhân
+                        send_notification(
+                            user_id=updated_encounter.medical_record.patient_id,
+                            notification_type="INVOICE_CREATED",
+                            message=f"An invoice has been created for your medical visit on {updated_encounter.encounter_date}.",
+                            additional_data={
+                                "invoice_id": invoice.get('id'),
+                                "encounter_id": updated_encounter.id,
+                                "amount": invoice.get('total_amount')
+                            },
+                            token=auth_header
+                        )
+                except Exception as e:
+                    logger.error(f"Error creating invoice for encounter {updated_encounter.id}: {str(e)}")
+                    # Don't raise the exception to avoid affecting the main flow
+
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

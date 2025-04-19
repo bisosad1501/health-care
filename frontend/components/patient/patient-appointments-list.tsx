@@ -4,11 +4,13 @@ import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, MapPin, MoreHorizontal, Video, AlertCircle } from "lucide-react"
+import { Calendar, Clock, MapPin, MoreHorizontal, Video, AlertCircle, CreditCard, FileCheck, Clipboard } from "lucide-react"
 import AppointmentService from "@/lib/api/appointment-service"
-import { format, isTomorrow, isToday } from "date-fns"
+import { format, isTomorrow, isToday, parseISO } from "date-fns"
 import { vi } from "date-fns/locale"
 import { Skeleton } from "@/components/ui/skeleton"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Helper function để định dạng ngày
 const formatAppointmentDate = (dateString: string) => {
@@ -29,7 +31,16 @@ interface FormattedAppointment {
   location: string
   type: "Trực tiếp" | "Video"
   status: string
+  statusCode: string
   avatar?: string
+  billing_status?: string
+  billing_id?: number
+  is_paid?: boolean
+  has_visit?: boolean
+  visit_status?: string
+  reason_text?: string
+  appointment_type?: string
+  department?: string
 }
 
 export default function PatientAppointmentsList() {
@@ -47,12 +58,14 @@ export default function PatientAppointmentsList() {
         // Nếu không có token, thử lấy lại sau 1 giây
         // Đây là giải pháp tạm thời để đảm bảo token được lấy sau khi đăng nhập
         if (!token || !userStr) {
+          console.log('Không tìm thấy token hoặc thông tin người dùng, thử lại sau 1 giây');
           setTimeout(() => {
             const retryToken = localStorage.getItem('token');
             const retryUserStr = localStorage.getItem('user');
 
             if (retryToken && retryUserStr) {
               // Nếu lấy được token sau khi thử lại, gọi lại hàm fetchAppointments
+              console.log('Lấy được token sau khi thử lại, gọi lại API');
               fetchAppointments();
             } else {
               console.error('Không có token hoặc thông tin người dùng');
@@ -63,47 +76,20 @@ export default function PatientAppointmentsList() {
           return;
         }
 
-        let userRoleConfirmed = false;
-        let userInfo = null;
-
-        // Lấy thông tin người dùng từ localStorage
-        try {
-          if (userStr) {
-            userInfo = JSON.parse(userStr);
-
-            // Kiểm tra vai trò từ localStorage
-            if (userInfo.role && userInfo.role.toUpperCase() !== 'PATIENT') {
-              console.warn("Vai trò người dùng không phải PATIENT, nhưng vẫn tiếp tục");
-            }
-
-            userRoleConfirmed = true;
-          } else {
-            console.error('Không có thông tin người dùng trong localStorage');
-          }
-        } catch (userError) {
-          console.error('Lỗi khi xử lý thông tin người dùng:', userError);
-        }
-
-        // Nếu không thể xác nhận vai trò từ API, kiểm tra từ localStorage
-        if (!userRoleConfirmed) {
-          console.log('DEBUG MODE: Using user info from localStorage');
-
-          try {
-            userInfo = JSON.parse(userStr);
-            console.log('User info from localStorage:', userInfo);
-          } catch (e) {
-            console.error('Error parsing user info from localStorage:', e);
-          }
-        }
-
         setLoading(true);
 
         try {
-          // Gọi API appointments với token đã lấy từ localStorage
-          console.log('DEBUG MODE: Calling getPatientAppointments');
-          console.log('DEBUG MODE: Token:', localStorage.getItem('token'));
+          // Gọi API appointments để lấy danh sách cuộc hẹn
           const data = await AppointmentService.getPatientAppointments();
-          console.log('DEBUG MODE: Appointments data received:', data);
+
+          // Kiểm tra dữ liệu trả về
+          if (!data) {
+            console.error('API trả về dữ liệu null hoặc undefined');
+            setError("Không thể tải dữ liệu lịch hẹn. Vui lòng thử lại sau.");
+            setAppointments([]);
+            setLoading(false);
+            return;
+          }
 
           // Kiểm tra xem data có phải là mảng hay không
           if (Array.isArray(data)) {
@@ -111,32 +97,81 @@ export default function PatientAppointmentsList() {
               // Format dữ liệu để hiển thị
               const formattedData = data.map(appointment => {
                 // Tính khoảng thời gian của cuộc hẹn
-                const startTime = new Date(`2000-01-01T${appointment.start_time}`)
-                const endTime = new Date(`2000-01-01T${appointment.end_time}`)
-                const diffInMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000)
+                let diffInMinutes = 30; // Giá trị mặc định nếu không tính được
+                try {
+                  if (appointment.start_time && appointment.end_time) {
+                    const startTime = new Date(`2000-01-01T${appointment.start_time}`)
+                    const endTime = new Date(`2000-01-01T${appointment.end_time}`)
+                    diffInMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000)
+                  }
+                } catch (error) {
+                  console.error('Lỗi khi tính thời gian:', error);
+                }
+
+                // Kiểm tra xem doctor có tồn tại không
+                const doctorInfo = appointment.doctor || {};
+                const doctorName = doctorInfo.first_name && doctorInfo.last_name
+                  ? `BS. ${doctorInfo.first_name} ${doctorInfo.last_name}`
+                  : `BS. (ID: ${appointment.doctor_id || 'Không xác định'})`;
+
+                // Xác định trạng thái lịch hẹn
+                let statusDisplay = "Chưa xác định";
+                let statusCode = appointment.status || "UNKNOWN";
+                
+                switch (statusCode.toUpperCase()) {
+                  case "CONFIRMED":
+                    statusDisplay = "Đã xác nhận";
+                    break;
+                  case "PENDING":
+                    statusDisplay = "Chờ xác nhận";
+                    break;
+                  case "COMPLETED":
+                    statusDisplay = "Hoàn thành";
+                    break;
+                  case "CANCELLED":
+                    statusDisplay = "Đã hủy";
+                    break;
+                  case "NO_SHOW":
+                    statusDisplay = "Không đến";
+                    break;
+                  case "IN_PROGRESS":
+                    statusDisplay = "Đang khám";
+                    break;
+                  default:
+                    statusDisplay = statusCode;
+                }
+
+                // Kiểm tra thông tin thăm khám
+                const hasVisit = !!appointment.visit_data;
+                const visitStatus = hasVisit ? appointment.visit_data.status : null;
 
                 return {
                   id: appointment.id,
-                  doctor: `Bác sĩ ${appointment.doctor.first_name} ${appointment.doctor.last_name}`,
-                  specialty: appointment.doctor.specialty || "Chưa xác định",
+                  doctor: doctorName,
+                  specialty: doctorInfo.specialty || "Chưa xác định",
                   date: formatAppointmentDate(appointment.appointment_date),
-                  time: appointment.start_time.substring(0, 5), // Lấy chỉ giờ:phút
+                  time: appointment.start_time?.substring(0, 5) || "--:--", // Lấy chỉ giờ:phút
                   duration: `${diffInMinutes} phút`,
                   location: appointment.location || "Chưa xác định",
-                  // Đảm bảo type luôn là một trong hai giá trị hợp lệ
-                  type: appointment.location?.toLowerCase().includes("trực tuyến") ? "Video" : "Trực tiếp" as "Video" | "Trực tiếp",
-                  status: appointment.status === "confirmed" ? "Đã xác nhận" :
-                        appointment.status === "scheduled" ? "Đã lên lịch" :
-                        appointment.status === "completed" ? "Hoàn thành" :
-                        appointment.status === "cancelled" ? "Đã hủy" : "Chưa xác định",
-                  avatar: appointment.doctor.id ? `/avatars/doctor-${appointment.doctor.id}.jpg` : "/placeholder.svg"
+                  type: appointment.appointment_type === "TELEHEALTH" ? "Video" : "Trực tiếp" as "Video" | "Trực tiếp",
+                  status: statusDisplay,
+                  statusCode: statusCode.toUpperCase(),
+                  avatar: doctorInfo.profile_image || "/placeholder.svg",
+                  billing_status: appointment.billing_status,
+                  billing_id: appointment.billing_id,
+                  is_paid: appointment.billing_status === "PAID",
+                  has_visit: hasVisit,
+                  visit_status: visitStatus,
+                  reason_text: appointment.reason_text,
+                  appointment_type: appointment.appointment_type_name || appointment.appointment_type,
+                  department: doctorInfo.department || appointment.department
                 }
               });
 
               setAppointments(formattedData);
               setError(null);
             } else {
-              console.log('DEBUG MODE: Empty appointments array');
+              console.log('Empty appointments array');
               setAppointments([]);
             }
           } else if (data && typeof data === 'object' && 'results' in data && Array.isArray(data.results)) {
@@ -145,55 +180,103 @@ export default function PatientAppointmentsList() {
               // Format dữ liệu để hiển thị
               const formattedData = data.results.map((appointment: any) => {
                 // Tính khoảng thời gian của cuộc hẹn
-                const startTime = new Date(`2000-01-01T${appointment.start_time}`)
-                const endTime = new Date(`2000-01-01T${appointment.end_time}`)
-                const diffInMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000)
+                let diffInMinutes = 30; // Giá trị mặc định nếu không tính được
+                try {
+                  if (appointment.start_time && appointment.end_time) {
+                    const startTime = new Date(`2000-01-01T${appointment.start_time}`)
+                    const endTime = new Date(`2000-01-01T${appointment.end_time}`)
+                    diffInMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000)
+                  }
+                } catch (error) {
+                  console.error('Lỗi khi tính thời gian:', error);
+                }
+
+                // Kiểm tra xem doctor có tồn tại không
+                const doctorInfo = appointment.doctor || {};
+                const doctorName = doctorInfo.first_name && doctorInfo.last_name
+                  ? `BS. ${doctorInfo.first_name} ${doctorInfo.last_name}`
+                  : `BS. (ID: ${appointment.doctor_id || 'Không xác định'})`;
+
+                // Xác định trạng thái lịch hẹn
+                let statusDisplay = "Chưa xác định";
+                let statusCode = appointment.status || "UNKNOWN";
+                
+                switch (statusCode.toUpperCase()) {
+                  case "CONFIRMED":
+                    statusDisplay = "Đã xác nhận";
+                    break;
+                  case "PENDING":
+                    statusDisplay = "Chờ xác nhận";
+                    break;
+                  case "COMPLETED":
+                    statusDisplay = "Hoàn thành";
+                    break;
+                  case "CANCELLED":
+                    statusDisplay = "Đã hủy";
+                    break;
+                  case "NO_SHOW":
+                    statusDisplay = "Không đến";
+                    break;
+                  case "IN_PROGRESS":
+                    statusDisplay = "Đang khám";
+                    break;
+                  default:
+                    statusDisplay = statusCode;
+                }
+
+                // Kiểm tra thông tin thăm khám
+                const hasVisit = !!appointment.visit_data;
+                const visitStatus = hasVisit ? appointment.visit_data.status : null;
 
                 return {
                   id: appointment.id,
-                  doctor: `Bác sĩ ${appointment.doctor.first_name} ${appointment.doctor.last_name}`,
-                  specialty: appointment.doctor.specialty || "Chưa xác định",
+                  doctor: doctorName,
+                  specialty: doctorInfo.specialty || "Chưa xác định",
                   date: formatAppointmentDate(appointment.appointment_date),
-                  time: appointment.start_time.substring(0, 5), // Lấy chỉ giờ:phút
+                  time: appointment.start_time?.substring(0, 5) || "--:--", // Lấy chỉ giờ:phút
                   duration: `${diffInMinutes} phút`,
                   location: appointment.location || "Chưa xác định",
-                  // Đảm bảo type luôn là một trong hai giá trị hợp lệ
-                  type: appointment.location?.toLowerCase().includes("trực tuyến") ? "Video" : "Trực tiếp" as "Video" | "Trực tiếp",
-                  status: appointment.status === "confirmed" ? "Đã xác nhận" :
-                        appointment.status === "scheduled" ? "Đã lên lịch" :
-                        appointment.status === "completed" ? "Hoàn thành" :
-                        appointment.status === "cancelled" ? "Đã hủy" : "Chưa xác định",
-                  avatar: appointment.doctor.id ? `/avatars/doctor-${appointment.doctor.id}.jpg` : "/placeholder.svg"
+                  type: appointment.appointment_type === "TELEHEALTH" ? "Video" : "Trực tiếp" as "Video" | "Trực tiếp",
+                  status: statusDisplay,
+                  statusCode: statusCode.toUpperCase(),
+                  avatar: doctorInfo.profile_image || "/placeholder.svg",
+                  billing_status: appointment.billing_status,
+                  billing_id: appointment.billing_id,
+                  is_paid: appointment.billing_status === "PAID",
+                  has_visit: hasVisit,
+                  visit_status: visitStatus,
+                  reason_text: appointment.reason_text,
+                  appointment_type: appointment.appointment_type_name || appointment.appointment_type,
+                  department: doctorInfo.department || appointment.department
                 }
               });
 
               setAppointments(formattedData);
               setError(null);
             } else {
-              console.log('DEBUG MODE: Empty results array in paginated data');
+              console.log('Empty results array in paginated data');
               setAppointments([]);
             }
           } else {
-            console.log('DEBUG MODE: No appointments data or invalid format', data);
+            console.log('No appointments data or invalid format', data);
             setAppointments([]);
           }
         } catch (apiError: any) {
-          console.error("DEBUG MODE: Lỗi khi tải danh sách cuộc hẹn:", apiError);
+          console.error("Lỗi khi tải danh sách cuộc hẹn:", apiError);
           console.error("Error details:", {
             status: apiError.response?.status,
             data: apiError.response?.data,
             message: apiError.message
           });
 
-          // KHÔNG ĐĂNG XUẤT, CHỈ HIỂN THỊ THÔNG BÁO LỖI
           if (apiError.response?.status === 403) {
-            setError(`Lỗi quyền truy cập: Bạn không có quyền xem danh sách cuộc hẹn. Chi tiết: ${JSON.stringify(apiError.response?.data || {})}`);
+            setError(`Lỗi quyền truy cập: Bạn không có quyền xem danh sách cuộc hẹn.`);
           } else if (apiError.response?.status === 404) {
-            setError(`Không tìm thấy API: Đường dẫn API không tồn tại hoặc chưa được cấu hình. Chi tiết: ${apiError.message}`);
+            setError(`Không tìm thấy API: Đường dẫn API không tồn tại hoặc chưa được cấu hình.`);
           } else if (apiError.response?.status === 401) {
             setError(`Lỗi xác thực: Phiên đăng nhập của bạn đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.`);
           } else {
-            setError(`Lỗi khi tải danh sách cuộc hẹn: ${apiError.message}. Mã lỗi: ${apiError.response?.status || 'Không xác định'}`);
+            setError(`Lỗi khi tải danh sách cuộc hẹn: ${apiError.message}`);
           }
         }
       } finally {
@@ -203,6 +286,48 @@ export default function PatientAppointmentsList() {
 
     fetchAppointments();
   }, [])
+
+  const handleCancelAppointment = async (appointmentId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy lịch hẹn này không?')) return;
+    
+    try {
+      await AppointmentService.cancelAppointment(appointmentId, 'Hủy bởi bệnh nhân');
+      
+      // Cập nhật trạng thái của lịch hẹn trong danh sách
+      setAppointments(prev => prev.map(app =>
+        app.id === appointmentId ? {...app, status: 'Đã hủy', statusCode: 'CANCELLED'} : app
+      ));
+      
+      // Hiển thị thông báo thành công
+      alert('Hủy lịch hẹn thành công!');
+    } catch (error: any) {
+      console.error('Lỗi khi hủy lịch hẹn:', error);
+      if (error.response?.data?.error === 'Cannot cancel appointment within 24 hours') {
+        alert('Không thể hủy lịch hẹn trong vòng 24 giờ trước giờ hẹn.');
+      } else {
+        alert('Không thể hủy lịch hẹn. ' + (error.message || 'Vui lòng thử lại sau.'));
+      }
+    }
+  }
+
+  // Kiểm tra xem lịch hẹn có thể hủy được không (không trong vòng 24h trước giờ hẹn)
+  const canCancel = (appointment: FormattedAppointment) => {
+    if (appointment.statusCode !== "CONFIRMED" && appointment.statusCode !== "PENDING") return false;
+    
+    // Nếu là hôm nay, kiểm tra thời gian
+    if (appointment.date === "Hôm nay") {
+      const now = new Date();
+      const [hours, minutes] = appointment.time.split(':').map(Number);
+      const appointmentTime = new Date();
+      appointmentTime.setHours(hours, minutes, 0);
+      
+      // Nếu còn ít hơn 24 giờ, không cho phép hủy
+      const diffHours = (appointmentTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+      if (diffHours <= 24) return false;
+    }
+    
+    return true;
+  }
 
   if (loading) {
     return (
@@ -253,10 +378,7 @@ export default function PatientAppointmentsList() {
         <Calendar className="h-10 w-10 text-muted-foreground" />
         <h3 className="mt-2 text-lg font-medium">Không có lịch hẹn nào</h3>
         <p className="mt-1 text-sm text-muted-foreground">Bạn chưa có lịch hẹn khám bệnh nào.</p>
-        <p className="text-xs text-muted-foreground mt-1 mb-2">
-          (Lưu ý: Nếu bạn vừa đặt lịch, có thể cần chờ API Gateway cập nhật hoặc có vấn đề về kết nối)
-        </p>
-        <Button className="mt-2" asChild>
+        <Button className="mt-4" asChild>
           <a href="/dashboard/patient/appointments/new">Đặt lịch hẹn ngay</a>
         </Button>
       </div>
@@ -268,7 +390,7 @@ export default function PatientAppointmentsList() {
       {appointments.map((appointment) => (
         <div
           key={appointment.id}
-          className="flex flex-col rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
+          className="flex flex-col rounded-lg border p-4 md:flex-row md:items-start md:justify-between"
         >
           <div className="flex items-start gap-4">
             <Avatar className="hidden md:block">
@@ -276,13 +398,17 @@ export default function PatientAppointmentsList() {
               <AvatarFallback>
                 {appointment.doctor
                   .split(" ")
+                  .filter(part => part[0])
                   .map((n) => n[0])
                   .join("")}
               </AvatarFallback>
             </Avatar>
             <div>
               <h4 className="font-medium">{appointment.doctor}</h4>
-              <p className="text-sm text-muted-foreground">{appointment.specialty}</p>
+              <p className="text-sm text-muted-foreground">
+                {appointment.specialty}
+                {appointment.department && ` • ${appointment.department}`}
+              </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                 <div className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -303,29 +429,97 @@ export default function PatientAppointmentsList() {
                   <span>{appointment.location}</span>
                 </div>
               </div>
+              
+              {appointment.reason_text && (
+                <div className="mt-2 text-sm">
+                  <p className="font-medium text-muted-foreground">Lý do khám:</p>
+                  <p className="text-sm line-clamp-1">{appointment.reason_text}</p>
+                </div>
+              )}
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                        {appointment.appointment_type || "Khám thường"}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Loại khám</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {appointment.has_visit && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700 px-2 py-1 text-xs font-medium">
+                          <Clipboard className="h-3 w-3" />
+                          <span>{appointment.visit_status || "Đã check-in"}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Trạng thái thăm khám</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+
+                {appointment.billing_id && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
+                            appointment.is_paid 
+                              ? "bg-green-50 text-green-700" 
+                              : "bg-yellow-50 text-yellow-700"
+                          }`}
+                        >
+                          {appointment.is_paid ? (
+                            <>
+                              <FileCheck className="h-3 w-3" />
+                              <span>Đã thanh toán</span>
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="h-3 w-3" />
+                              <span>Chờ thanh toán</span>
+                            </>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Trạng thái thanh toán</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between md:mt-0 md:flex-col md:items-end">
-            <Badge
-              variant={
-                appointment.status === "Đã xác nhận" ? "default" :
-                appointment.status === "Hoàn thành" ? "outline" :
-                appointment.status === "Đã hủy" ? "destructive" : "outline"
-              }
-              className={
-                appointment.status === "Đã xác nhận" ? "bg-green-100 text-green-800 hover:bg-green-100" :
-                appointment.status === "Hoàn thành" ? "bg-blue-100 text-blue-800 hover:bg-blue-100" :
-                ""
-              }
-            >
-              {appointment.status}
-            </Badge>
+          <div className="mt-4 flex flex-col items-end gap-2 md:mt-0">
+            <StatusBadge status={appointment.statusCode} />
+            
             <div className="flex items-center gap-2 mt-2">
-              {appointment.status !== "Hoàn thành" && appointment.status !== "Đã hủy" && (
+              {appointment.statusCode === "CONFIRMED" && (
                 <Button variant="outline" size="sm" asChild>
-                  <a href={`/dashboard/patient/appointments/${appointment.id}/edit`}>Đổi lịch</a>
+                  <a href={`/dashboard/patient/appointments/${appointment.id}/reschedule`}>Đổi lịch</a>
                 </Button>
               )}
+              
+              {canCancel(appointment) && (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={() => handleCancelAppointment(appointment.id)}
+                >
+                  Hủy
+                </Button>
+              )}
+              
               <Button variant="ghost" size="icon" asChild>
                 <a href={`/dashboard/patient/appointments/${appointment.id}`}>
                   <MoreHorizontal className="h-4 w-4" />

@@ -1,4 +1,6 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from common_auth import register_health_check
 from .views import (
     MedicalRecordListCreateAPIView, MedicalRecordDetailAPIView, MedicalRecordSummaryAPIView,
     EncounterListCreateAPIView, EncounterDetailAPIView,
@@ -10,8 +12,13 @@ from .views import (
     MedicationListCreateAPIView, MedicationDetailAPIView,
     VitalSignListCreateAPIView, VitalSignDetailAPIView,
     LabTestListCreateAPIView, LabTestDetailAPIView,
-    LabResultListCreateAPIView, LabResultDetailAPIView
+    LabResultListCreateAPIView, LabResultDetailAPIView,
+    create_encounter_from_appointment
 )
+
+# Tạo router cho DiagnosisDetailAPIView
+diagnosis_router = DefaultRouter()
+diagnosis_router.register(r'diagnoses', DiagnosisDetailAPIView, basename='diagnosis')
 
 urlpatterns = [
     # Medical Record endpoints
@@ -22,10 +29,12 @@ urlpatterns = [
     # Encounter endpoints
     path('encounters/', EncounterListCreateAPIView.as_view(), name='encounter-list'),
     path('encounters/<int:pk>/', EncounterDetailAPIView.as_view(), name='encounter-detail'),
+    path('encounters/from-appointment/<int:appointment_id>/', create_encounter_from_appointment, name='create-encounter-from-appointment-alt'),
 
     # Diagnosis endpoints
     path('diagnoses/', DiagnosisListCreateAPIView.as_view(), name='diagnosis-list'),
-    path('diagnoses/<int:pk>/', DiagnosisDetailAPIView.as_view(), name='diagnosis-detail'),
+    # Sử dụng router cho DiagnosisDetailAPIView
+    path('', include(diagnosis_router.urls)),
 
     # Treatment endpoints
     path('treatments/', TreatmentListCreateAPIView.as_view(), name='treatment-list'),
@@ -59,3 +68,6 @@ urlpatterns = [
     path('lab-results/', LabResultListCreateAPIView.as_view(), name='lab-result-list'),
     path('lab-results/<int:pk>/', LabResultDetailAPIView.as_view(), name='lab-result-detail'),
 ]
+
+# Register health check endpoint
+urlpatterns = register_health_check(urlpatterns)

@@ -59,6 +59,9 @@ class VitalSignSerializer(serializers.ModelSerializer):
 
 
 class LabResultSerializer(serializers.ModelSerializer):
+    performed_by = serializers.IntegerField(required=False)  # Not mandatory in requests
+    performed_at = serializers.DateTimeField(required=False)  # Not mandatory in requests
+
     class Meta:
         model = LabResult
         fields = '__all__'
@@ -67,6 +70,8 @@ class LabResultSerializer(serializers.ModelSerializer):
 
 class LabTestSerializer(serializers.ModelSerializer):
     results = LabResultSerializer(many=True, read_only=True)
+    ordered_by = serializers.IntegerField(required=False)  # Not mandatory in requests
+    ordered_at = serializers.DateTimeField(required=False)  # Not mandatory in requests
 
     class Meta:
         model = LabTest

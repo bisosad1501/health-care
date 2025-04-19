@@ -20,187 +20,472 @@ def process_appointment_event(event_data):
     appointment_date = event_data.get('appointment_date')
     appointment_type = event_data.get('appointment_type')
     notes = event_data.get('notes', '')
+    department_id = event_data.get('department_id')
+    specialty_id = event_data.get('specialty_id')
 
     # Format appointment date for display
     formatted_date = appointment_date if appointment_date else 'Unknown'
 
+    # List to store all notifications
+    notifications = []
+
     # Create notifications based on event type
     if event_type == 'CREATED':
-        # Notify patient about new appointment
-        patient_notification = Notification(
+        # Notify patient about new appointment - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='APPOINTMENT',
             channel='EMAIL',
-            subject=f'New Appointment Scheduled: {appointment_type}',
-            content=f'Your appointment has been scheduled for {formatted_date}. ' +
-                    f'Appointment type: {appointment_type}. ' +
-                    (f'Notes: {notes}' if notes else ''),
+            subject=f'Lịch hẹn mới: {appointment_type}',
+            content=f'Lịch hẹn của bạn đã được đặt vào ngày {formatted_date}. ' +
+                    f'Loại lịch hẹn: {appointment_type}. ' +
+                    (f'Ghi chú: {notes}' if notes else ''),
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
 
-        # Notify doctor about new appointment
-        doctor_notification = Notification(
+        # Notify patient about new appointment - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn mới',
+            content=f'Lịch hẹn của bạn đã được đặt vào ngày {formatted_date}.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about new appointment - Email
+        doctor_email = Notification(
             recipient_id=doctor_id,
             recipient_type='DOCTOR',
             notification_type='APPOINTMENT',
             channel='EMAIL',
-            subject=f'New Appointment Scheduled: {appointment_type}',
-            content=f'A new appointment has been scheduled for {formatted_date}. ' +
-                    f'Appointment type: {appointment_type}. ' +
-                    (f'Notes: {notes}' if notes else ''),
+            subject=f'Lịch hẹn mới: {appointment_type}',
+            content=f'Một lịch hẹn mới đã được đặt vào ngày {formatted_date}. ' +
+                    f'Loại lịch hẹn: {appointment_type}. ' +
+                    (f'Ghi chú: {notes}' if notes else ''),
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        doctor_notification.save()
-        send_email_notification.delay(doctor_notification.id)
+        doctor_email.save()
+        send_email_notification.delay(doctor_email.id)
+        notifications.append(doctor_email.id)
+
+        # Notify doctor about new appointment - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn mới',
+            content=f'Một lịch hẹn mới đã được đặt vào ngày {formatted_date}.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses in the department - In-App
+        if department_id:
+            nurse_inapp = Notification(
+                recipient_id=department_id,  # Using department_id as a group identifier
+                recipient_type='NURSE',
+                notification_type='APPOINTMENT',
+                channel='IN_APP',
+                subject=f'Lịch hẹn mới trong khoa',
+                content=f'Một lịch hẹn mới đã được đặt vào ngày {formatted_date} trong khoa của bạn.',
+                reference_id=str(appointment_id),
+                reference_type='APPOINTMENT',
+                status='PENDING'
+            )
+            nurse_inapp.save()
+            notifications.append(nurse_inapp.id)
+
+        # Notify admin - In-App
+        admin_inapp = Notification(
+            recipient_id=0,  # Admin group ID
+            recipient_type='ADMIN',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn mới được tạo',
+            content=f'Một lịch hẹn mới đã được tạo vào ngày {formatted_date}.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        admin_inapp.save()
+        notifications.append(admin_inapp.id)
 
         return {
             'message': 'Appointment creation notifications sent',
-            'notifications': [patient_notification.id, doctor_notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'UPDATED':
-        # Notify patient about updated appointment
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about updated appointment - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='APPOINTMENT',
             channel='EMAIL',
-            subject=f'Appointment Updated: {appointment_type}',
-            content=f'Your appointment has been updated to {formatted_date}. ' +
-                    f'Appointment type: {appointment_type}. ' +
-                    (f'Notes: {notes}' if notes else ''),
+            subject=f'Lịch hẹn đã cập nhật: {appointment_type}',
+            content=f'Lịch hẹn của bạn đã được cập nhật vào ngày {formatted_date}. ' +
+                    f'Loại lịch hẹn: {appointment_type}. ' +
+                    (f'Ghi chú: {notes}' if notes else ''),
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
 
-        # Notify doctor about updated appointment
-        doctor_notification = Notification(
+        # Notify patient about updated appointment - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn đã cập nhật',
+            content=f'Lịch hẹn của bạn đã được cập nhật vào ngày {formatted_date}.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about updated appointment - Email
+        doctor_email = Notification(
             recipient_id=doctor_id,
             recipient_type='DOCTOR',
             notification_type='APPOINTMENT',
             channel='EMAIL',
-            subject=f'Appointment Updated: {appointment_type}',
-            content=f'An appointment has been updated to {formatted_date}. ' +
-                    f'Appointment type: {appointment_type}. ' +
-                    (f'Notes: {notes}' if notes else ''),
+            subject=f'Lịch hẹn đã cập nhật: {appointment_type}',
+            content=f'Một lịch hẹn đã được cập nhật vào ngày {formatted_date}. ' +
+                    f'Loại lịch hẹn: {appointment_type}. ' +
+                    (f'Ghi chú: {notes}' if notes else ''),
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        doctor_notification.save()
-        send_email_notification.delay(doctor_notification.id)
+        doctor_email.save()
+        send_email_notification.delay(doctor_email.id)
+        notifications.append(doctor_email.id)
+
+        # Notify doctor about updated appointment - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn đã cập nhật',
+            content=f'Một lịch hẹn đã được cập nhật vào ngày {formatted_date}.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses in the department - In-App
+        if department_id:
+            nurse_inapp = Notification(
+                recipient_id=department_id,  # Using department_id as a group identifier
+                recipient_type='NURSE',
+                notification_type='APPOINTMENT',
+                channel='IN_APP',
+                subject=f'Lịch hẹn đã cập nhật trong khoa',
+                content=f'Một lịch hẹn đã được cập nhật vào ngày {formatted_date} trong khoa của bạn.',
+                reference_id=str(appointment_id),
+                reference_type='APPOINTMENT',
+                status='PENDING'
+            )
+            nurse_inapp.save()
+            notifications.append(nurse_inapp.id)
 
         return {
             'message': 'Appointment update notifications sent',
-            'notifications': [patient_notification.id, doctor_notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'CANCELLED':
-        # Notify patient about cancelled appointment
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about cancelled appointment - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='APPOINTMENT',
             channel='EMAIL',
-            subject='Appointment Cancelled',
-            content=f'Your appointment scheduled for {formatted_date} has been cancelled. ' +
-                    (f'Notes: {notes}' if notes else ''),
+            subject=f'Lịch hẹn đã bị hủy',
+            content=f'Lịch hẹn của bạn vào ngày {formatted_date} đã bị hủy. ' +
+                    (f'Ghi chú: {notes}' if notes else ''),
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
 
-        # Notify doctor about cancelled appointment
-        doctor_notification = Notification(
+        # Notify patient about cancelled appointment - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn đã bị hủy',
+            content=f'Lịch hẹn của bạn vào ngày {formatted_date} đã bị hủy.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about cancelled appointment - Email
+        doctor_email = Notification(
             recipient_id=doctor_id,
             recipient_type='DOCTOR',
             notification_type='APPOINTMENT',
             channel='EMAIL',
-            subject='Appointment Cancelled',
-            content=f'An appointment scheduled for {formatted_date} has been cancelled. ' +
-                    (f'Notes: {notes}' if notes else ''),
+            subject=f'Lịch hẹn đã bị hủy',
+            content=f'Một lịch hẹn vào ngày {formatted_date} đã bị hủy. ' +
+                    (f'Ghi chú: {notes}' if notes else ''),
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        doctor_notification.save()
-        send_email_notification.delay(doctor_notification.id)
+        doctor_email.save()
+        send_email_notification.delay(doctor_email.id)
+        notifications.append(doctor_email.id)
+
+        # Notify doctor about cancelled appointment - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn đã bị hủy',
+            content=f'Một lịch hẹn vào ngày {formatted_date} đã bị hủy.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses in the department - In-App
+        if department_id:
+            nurse_inapp = Notification(
+                recipient_id=department_id,  # Using department_id as a group identifier
+                recipient_type='NURSE',
+                notification_type='APPOINTMENT',
+                channel='IN_APP',
+                subject=f'Lịch hẹn đã bị hủy trong khoa',
+                content=f'Một lịch hẹn vào ngày {formatted_date} trong khoa của bạn đã bị hủy.',
+                reference_id=str(appointment_id),
+                reference_type='APPOINTMENT',
+                status='PENDING'
+            )
+            nurse_inapp.save()
+            notifications.append(nurse_inapp.id)
+
+        # Notify admin - In-App
+        admin_inapp = Notification(
+            recipient_id=0,  # Admin group ID
+            recipient_type='ADMIN',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject=f'Lịch hẹn đã bị hủy',
+            content=f'Một lịch hẹn vào ngày {formatted_date} đã bị hủy.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        admin_inapp.save()
+        notifications.append(admin_inapp.id)
 
         return {
             'message': 'Appointment cancellation notifications sent',
-            'notifications': [patient_notification.id, doctor_notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'REMINDER':
-        # Send reminder to patient
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Send reminder to patient - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='APPOINTMENT',
             channel='EMAIL',
-            subject='Appointment Reminder',
-            content=f'Reminder: You have an appointment scheduled for {formatted_date}. ' +
-                    f'Appointment type: {appointment_type}. ' +
-                    (f'Notes: {notes}' if notes else ''),
+            subject='Nhắc nhở lịch hẹn',
+            content=f'Nhắc nhở: Bạn có lịch hẹn vào ngày {formatted_date}. ' +
+                    f'Loại lịch hẹn: {appointment_type}. ' +
+                    (f'Ghi chú: {notes}' if notes else ''),
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
 
-        # Also send SMS reminder if configured
+        # Send reminder to patient - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject='Nhắc nhở lịch hẹn',
+            content=f'Nhắc nhở: Bạn có lịch hẹn vào ngày {formatted_date}.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Send SMS reminder if available
         patient_sms = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='APPOINTMENT',
             channel='SMS',
             subject='',
-            content=f'Reminder: You have an appointment scheduled for {formatted_date}.',
+            content=f'Nhắc nhở: Bạn có lịch hẹn vào ngày {formatted_date}.',
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
         patient_sms.save()
         send_sms_notification.delay(patient_sms.id)
+        notifications.append(patient_sms.id)
 
-        return {
-            'message': 'Appointment reminder notifications sent',
-            'notifications': [patient_notification.id, patient_sms.id]
-        }
-
-    elif event_type == 'COMPLETED':
-        # Notify patient about completed appointment
-        patient_notification = Notification(
-            recipient_id=patient_id,
-            recipient_type='PATIENT',
+        # Send reminder to doctor - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
             notification_type='APPOINTMENT',
-            channel='EMAIL',
-            subject='Appointment Completed',
-            content=f'Your appointment on {formatted_date} has been marked as completed. ' +
-                    'Thank you for visiting our healthcare facility.',
+            channel='IN_APP',
+            subject='Nhắc nhở lịch hẹn',
+            content=f'Nhắc nhở: Bạn có lịch hẹn vào ngày {formatted_date}.',
             reference_id=str(appointment_id),
             reference_type='APPOINTMENT',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses in the department - In-App
+        if department_id:
+            nurse_inapp = Notification(
+                recipient_id=department_id,  # Using department_id as a group identifier
+                recipient_type='NURSE',
+                notification_type='APPOINTMENT',
+                channel='IN_APP',
+                subject='Nhắc nhở lịch hẹn trong khoa',
+                content=f'Nhắc nhở: Có lịch hẹn vào ngày {formatted_date} trong khoa của bạn.',
+                reference_id=str(appointment_id),
+                reference_type='APPOINTMENT',
+                status='PENDING'
+            )
+            nurse_inapp.save()
+            notifications.append(nurse_inapp.id)
+
+        return {
+            'message': 'Appointment reminder notifications sent',
+            'notifications': notifications
+        }
+
+    elif event_type == 'COMPLETED':
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about completed appointment - Email
+        patient_email = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='APPOINTMENT',
+            channel='EMAIL',
+            subject='Lịch hẹn đã hoàn thành',
+            content=f'Lịch hẹn của bạn vào ngày {formatted_date} đã được đánh dấu là hoàn thành. ' +
+                    'Cảm ơn bạn đã đến cơ sở y tế của chúng tôi.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about completed appointment - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject='Lịch hẹn đã hoàn thành',
+            content=f'Lịch hẹn của bạn vào ngày {formatted_date} đã được hoàn thành.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about completed appointment - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject='Lịch hẹn đã hoàn thành',
+            content=f'Lịch hẹn vào ngày {formatted_date} đã được hoàn thành.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify admin - In-App
+        admin_inapp = Notification(
+            recipient_id=0,  # Admin group ID
+            recipient_type='ADMIN',
+            notification_type='APPOINTMENT',
+            channel='IN_APP',
+            subject='Lịch hẹn đã hoàn thành',
+            content=f'Một lịch hẹn vào ngày {formatted_date} đã được hoàn thành.',
+            reference_id=str(appointment_id),
+            reference_type='APPOINTMENT',
+            status='PENDING'
+        )
+        admin_inapp.save()
+        notifications.append(admin_inapp.id)
 
         return {
             'message': 'Appointment completion notification sent',
-            'notifications': [patient_notification.id]
+            'notifications': notifications
         }
 
     else:
@@ -224,115 +509,360 @@ def process_medical_record_event(event_data):
 
     # Create notifications based on event type
     if event_type == 'CREATED':
-        # Notify patient about new medical record
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about new medical record - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='MEDICAL_RECORD',
             channel='EMAIL',
-            subject='New Medical Record Created',
-            content=f'A new medical record has been created for you. ' +
-                    f'Record type: {record_type}. ' +
-                    (f'Description: {description}' if description else ''),
+            subject='Hồ sơ y tế mới',
+            content=f'Một hồ sơ y tế mới đã được tạo cho bạn. ' +
+                    f'Loại hồ sơ: {record_type}. ' +
+                    (f'Mô tả: {description}' if description else ''),
             reference_id=str(record_id),
             reference_type='MEDICAL_RECORD',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about new medical record - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Hồ sơ y tế mới',
+            content=f'Một hồ sơ y tế mới đã được tạo cho bạn.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about new medical record - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Hồ sơ y tế mới đã được tạo',
+            content=f'Bạn đã tạo một hồ sơ y tế mới cho bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses - In-App
+        nurse_inapp = Notification(
+            recipient_id=0,  # Nurse group ID
+            recipient_type='NURSE',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Hồ sơ y tế mới đã được tạo',
+            content=f'Một hồ sơ y tế mới đã được tạo.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        nurse_inapp.save()
+        notifications.append(nurse_inapp.id)
 
         return {
             'message': 'Medical record creation notification sent',
-            'notifications': [patient_notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'UPDATED':
-        # Notify patient about updated medical record
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about updated medical record - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='MEDICAL_RECORD',
             channel='EMAIL',
-            subject='Medical Record Updated',
-            content=f'Your medical record has been updated. ' +
-                    f'Record type: {record_type}. ' +
-                    (f'Description: {description}' if description else ''),
+            subject='Hồ sơ y tế đã cập nhật',
+            content=f'Hồ sơ y tế của bạn đã được cập nhật. ' +
+                    f'Loại hồ sơ: {record_type}. ' +
+                    (f'Mô tả: {description}' if description else ''),
             reference_id=str(record_id),
             reference_type='MEDICAL_RECORD',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about updated medical record - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Hồ sơ y tế đã cập nhật',
+            content=f'Hồ sơ y tế của bạn đã được cập nhật.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about updated medical record - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Hồ sơ y tế đã cập nhật',
+            content=f'Bạn đã cập nhật hồ sơ y tế của bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses - In-App
+        nurse_inapp = Notification(
+            recipient_id=0,  # Nurse group ID
+            recipient_type='NURSE',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Hồ sơ y tế đã cập nhật',
+            content=f'Một hồ sơ y tế đã được cập nhật.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        nurse_inapp.save()
+        notifications.append(nurse_inapp.id)
 
         return {
             'message': 'Medical record update notification sent',
-            'notifications': [patient_notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'DIAGNOSIS_ADDED':
-        # Notify patient about new diagnosis
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about new diagnosis - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='MEDICAL_RECORD',
             channel='EMAIL',
-            subject='New Diagnosis Added to Your Medical Record',
-            content=f'A new diagnosis has been added to your medical record. ' +
-                    (f'Details: {description}' if description else ''),
+            subject='Chẩn đoán mới đã được thêm vào hồ sơ y tế của bạn',
+            content=f'Một chẩn đoán mới đã được thêm vào hồ sơ y tế của bạn. ' +
+                    (f'Chi tiết: {description}' if description else ''),
             reference_id=str(record_id),
             reference_type='MEDICAL_RECORD',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about new diagnosis - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Chẩn đoán mới',
+            content=f'Một chẩn đoán mới đã được thêm vào hồ sơ y tế của bạn.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about new diagnosis - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Chẩn đoán mới đã được thêm',
+            content=f'Bạn đã thêm một chẩn đoán mới vào hồ sơ y tế của bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses - In-App
+        nurse_inapp = Notification(
+            recipient_id=0,  # Nurse group ID
+            recipient_type='NURSE',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Chẩn đoán mới đã được thêm',
+            content=f'Một chẩn đoán mới đã được thêm vào hồ sơ y tế của bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        nurse_inapp.save()
+        notifications.append(nurse_inapp.id)
 
         return {
             'message': 'Diagnosis notification sent',
-            'notifications': [patient_notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'TREATMENT_ADDED':
-        # Notify patient about new treatment
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about new treatment - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='MEDICAL_RECORD',
             channel='EMAIL',
-            subject='New Treatment Added to Your Medical Record',
-            content=f'A new treatment has been added to your medical record. ' +
-                    (f'Details: {description}' if description else ''),
+            subject='Điều trị mới đã được thêm vào hồ sơ y tế của bạn',
+            content=f'Một phương pháp điều trị mới đã được thêm vào hồ sơ y tế của bạn. ' +
+                    (f'Chi tiết: {description}' if description else ''),
             reference_id=str(record_id),
             reference_type='MEDICAL_RECORD',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about new treatment - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Điều trị mới',
+            content=f'Một phương pháp điều trị mới đã được thêm vào hồ sơ y tế của bạn.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about new treatment - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Điều trị mới đã được thêm',
+            content=f'Bạn đã thêm một phương pháp điều trị mới vào hồ sơ y tế của bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify nurses - In-App
+        nurse_inapp = Notification(
+            recipient_id=0,  # Nurse group ID
+            recipient_type='NURSE',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Điều trị mới đã được thêm',
+            content=f'Một phương pháp điều trị mới đã được thêm vào hồ sơ y tế của bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        nurse_inapp.save()
+        notifications.append(nurse_inapp.id)
 
         return {
             'message': 'Treatment notification sent',
-            'notifications': [patient_notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'MEDICATION_ADDED':
-        # Notify patient about new medication
-        patient_notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about new medication - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='MEDICAL_RECORD',
             channel='EMAIL',
-            subject='New Medication Added to Your Medical Record',
-            content=f'A new medication has been added to your medical record. ' +
-                    (f'Details: {description}' if description else ''),
+            subject='Thuốc mới đã được thêm vào hồ sơ y tế của bạn',
+            content=f'Một loại thuốc mới đã được thêm vào hồ sơ y tế của bạn. ' +
+                    (f'Chi tiết: {description}' if description else ''),
             reference_id=str(record_id),
             reference_type='MEDICAL_RECORD',
             status='PENDING'
         )
-        patient_notification.save()
-        send_email_notification.delay(patient_notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about new medication - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Thuốc mới',
+            content=f'Một loại thuốc mới đã được thêm vào hồ sơ y tế của bạn.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about new medication - In-App
+        doctor_inapp = Notification(
+            recipient_id=doctor_id,
+            recipient_type='DOCTOR',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Thuốc mới đã được thêm',
+            content=f'Bạn đã thêm một loại thuốc mới vào hồ sơ y tế của bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        doctor_inapp.save()
+        notifications.append(doctor_inapp.id)
+
+        # Notify pharmacist - In-App
+        pharmacist_inapp = Notification(
+            recipient_id=0,  # Pharmacist group ID
+            recipient_type='PHARMACIST',
+            notification_type='MEDICAL_RECORD',
+            channel='IN_APP',
+            subject='Thuốc mới đã được kê đơn',
+            content=f'Một loại thuốc mới đã được kê đơn cho bệnh nhân.',
+            reference_id=str(record_id),
+            reference_type='MEDICAL_RECORD',
+            status='PENDING'
+        )
+        pharmacist_inapp.save()
+        notifications.append(pharmacist_inapp.id)
 
         return {
             'message': 'Medication notification sent',
-            'notifications': [patient_notification.id]
+            'notifications': notifications
         }
 
     else:
@@ -776,8 +1306,11 @@ def process_laboratory_event(event_data):
 
     # Create notifications based on event type
     if event_type == 'TEST_ORDERED':
-        # Notify patient about ordered test
-        notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about ordered test - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='LABORATORY',
@@ -791,17 +1324,70 @@ def process_laboratory_event(event_data):
             reference_type='TEST',
             status='PENDING'
         )
-        notification.save()
-        send_email_notification.delay(notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about ordered test - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='LABORATORY',
+            channel='IN_APP',
+            subject='Xét nghiệm mới',
+            content=f'Một xét nghiệm mới đã được yêu cầu cho bạn. ' +
+                    (f'Tên xét nghiệm: {test_name}.' if test_name else ''),
+            reference_id=str(test_id),
+            reference_type='TEST',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about ordered test - In-App
+        if doctor_id:
+            doctor_inapp = Notification(
+                recipient_id=doctor_id,
+                recipient_type='DOCTOR',
+                notification_type='LABORATORY',
+                channel='IN_APP',
+                subject='Xét nghiệm mới đã được yêu cầu',
+                content=f'Bạn đã yêu cầu một xét nghiệm mới cho bệnh nhân. ' +
+                        (f'Tên xét nghiệm: {test_name}.' if test_name else ''),
+                reference_id=str(test_id),
+                reference_type='TEST',
+                status='PENDING'
+            )
+            doctor_inapp.save()
+            notifications.append(doctor_inapp.id)
+
+        # Notify lab technician - In-App
+        lab_tech_inapp = Notification(
+            recipient_id=0,  # Lab technician group ID
+            recipient_type='LAB_TECHNICIAN',
+            notification_type='LABORATORY',
+            channel='IN_APP',
+            subject='Xét nghiệm mới cần xử lý',
+            content=f'Một xét nghiệm mới cần được xử lý. ' +
+                    (f'Tên xét nghiệm: {test_name}.' if test_name else ''),
+            reference_id=str(test_id),
+            reference_type='TEST',
+            status='PENDING'
+        )
+        lab_tech_inapp.save()
+        notifications.append(lab_tech_inapp.id)
 
         return {
             'message': 'Đã gửi thông báo yêu cầu xét nghiệm',
-            'notifications': [notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'SAMPLE_COLLECTED':
-        # Notify patient about sample collection
-        notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about sample collection - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='LABORATORY',
@@ -814,17 +1400,70 @@ def process_laboratory_event(event_data):
             reference_type='TEST',
             status='PENDING'
         )
-        notification.save()
-        send_email_notification.delay(notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
+
+        # Notify patient about sample collection - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='LABORATORY',
+            channel='IN_APP',
+            subject='Mẫu xét nghiệm đã được thu thập',
+            content=f'Mẫu xét nghiệm của bạn đã được thu thập. ' +
+                    (f'Tên xét nghiệm: {test_name}.' if test_name else ''),
+            reference_id=str(test_id),
+            reference_type='TEST',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about sample collection - In-App
+        if doctor_id:
+            doctor_inapp = Notification(
+                recipient_id=doctor_id,
+                recipient_type='DOCTOR',
+                notification_type='LABORATORY',
+                channel='IN_APP',
+                subject='Mẫu xét nghiệm đã được thu thập',
+                content=f'Mẫu xét nghiệm của bệnh nhân đã được thu thập. ' +
+                        (f'Tên xét nghiệm: {test_name}.' if test_name else ''),
+                reference_id=str(test_id),
+                reference_type='TEST',
+                status='PENDING'
+            )
+            doctor_inapp.save()
+            notifications.append(doctor_inapp.id)
+
+        # Notify lab technician - In-App
+        lab_tech_inapp = Notification(
+            recipient_id=0,  # Lab technician group ID
+            recipient_type='LAB_TECHNICIAN',
+            notification_type='LABORATORY',
+            channel='IN_APP',
+            subject='Mẫu xét nghiệm đã được thu thập',
+            content=f'Mẫu xét nghiệm đã được thu thập và sẵn sàng để xử lý. ' +
+                    (f'Tên xét nghiệm: {test_name}.' if test_name else ''),
+            reference_id=str(test_id),
+            reference_type='TEST',
+            status='PENDING'
+        )
+        lab_tech_inapp.save()
+        notifications.append(lab_tech_inapp.id)
 
         return {
             'message': 'Đã gửi thông báo thu thập mẫu',
-            'notifications': [notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'RESULTS_READY':
-        # Notify patient about ready results
-        notification = Notification(
+        # List to store all notifications
+        notifications = []
+
+        # Notify patient about ready results - Email
+        patient_email = Notification(
             recipient_id=patient_id,
             recipient_type='PATIENT',
             notification_type='LABORATORY',
@@ -837,35 +1476,82 @@ def process_laboratory_event(event_data):
             reference_type='RESULT',
             status='PENDING'
         )
-        notification.save()
-        send_email_notification.delay(notification.id)
+        patient_email.save()
+        send_email_notification.delay(patient_email.id)
+        notifications.append(patient_email.id)
 
-        # Also notify doctor if results are abnormal
-        if is_abnormal and doctor_id:
-            doctor_notification = Notification(
+        # Notify patient about ready results - In-App
+        patient_inapp = Notification(
+            recipient_id=patient_id,
+            recipient_type='PATIENT',
+            notification_type='LABORATORY',
+            channel='IN_APP',
+            subject='Kết quả xét nghiệm đã sẵn sàng',
+            content=f'Kết quả xét nghiệm của bạn đã sẵn sàng. ' +
+                    (f'Tên xét nghiệm: {test_name}.' if test_name else ''),
+            reference_id=str(result_id),
+            reference_type='RESULT',
+            status='PENDING'
+        )
+        patient_inapp.save()
+        notifications.append(patient_inapp.id)
+
+        # Notify doctor about ready results - Email
+        if doctor_id:
+            doctor_email = Notification(
                 recipient_id=doctor_id,
                 recipient_type='DOCTOR',
                 notification_type='LABORATORY',
                 channel='EMAIL',
-                subject='Kết quả xét nghiệm bất thường',
-                content=f'Kết quả xét nghiệm bất thường đã được phát hiện cho bệnh nhân (ID: {patient_id}). ' +
+                subject='Kết quả xét nghiệm đã sẵn sàng',
+                content=f'Kết quả xét nghiệm của bệnh nhân (ID: {patient_id}) đã sẵn sàng. ' +
                         (f'Tên xét nghiệm: {test_name}. ' if test_name else '') +
-                        'Vui lòng xem xét kết quả và liên hệ với bệnh nhân nếu cần thiết.',
+                        (f'Kết quả bất thường: Có' if is_abnormal else ''),
                 reference_id=str(result_id),
                 reference_type='RESULT',
                 status='PENDING'
             )
-            doctor_notification.save()
-            send_email_notification.delay(doctor_notification.id)
+            doctor_email.save()
+            send_email_notification.delay(doctor_email.id)
+            notifications.append(doctor_email.id)
 
-            return {
-                'message': 'Đã gửi thông báo kết quả sẵn sàng (bất thường)',
-                'notifications': [notification.id, doctor_notification.id]
-            }
+            # Notify doctor about ready results - In-App
+            doctor_inapp = Notification(
+                recipient_id=doctor_id,
+                recipient_type='DOCTOR',
+                notification_type='LABORATORY',
+                channel='IN_APP',
+                subject='Kết quả xét nghiệm đã sẵn sàng',
+                content=f'Kết quả xét nghiệm của bệnh nhân đã sẵn sàng. ' +
+                        (f'Tên xét nghiệm: {test_name}. ' if test_name else '') +
+                        (f'Kết quả bất thường: Có' if is_abnormal else ''),
+                reference_id=str(result_id),
+                reference_type='RESULT',
+                status='PENDING'
+            )
+            doctor_inapp.save()
+            notifications.append(doctor_inapp.id)
+
+        # Notify lab technician - In-App
+        lab_tech_inapp = Notification(
+            recipient_id=0,  # Lab technician group ID
+            recipient_type='LAB_TECHNICIAN',
+            notification_type='LABORATORY',
+            channel='IN_APP',
+            subject='Kết quả xét nghiệm đã sẵn sàng',
+            content=f'Kết quả xét nghiệm đã sẵn sàng. ' +
+                    (f'Tên xét nghiệm: {test_name}. ' if test_name else '') +
+                    (f'Kết quả bất thường: Có' if is_abnormal else ''),
+            reference_id=str(result_id),
+            reference_type='RESULT',
+            status='PENDING'
+        )
+        lab_tech_inapp.save()
+        notifications.append(lab_tech_inapp.id)
 
         return {
             'message': 'Đã gửi thông báo kết quả sẵn sàng',
-            'notifications': [notification.id]
+            'notifications': notifications
         }
 
     elif event_type == 'RESULTS_DELIVERED':

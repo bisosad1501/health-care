@@ -359,7 +359,7 @@ class PatientProfileAPI(APIView):
     def get(self, request):
         """Lấy hồ sơ bệnh nhân của người dùng hiện tại"""
         try:
-            profile = PatientProfile.objects.get(user=request.user)
+            profile = PatientProfile.objects.get(user_id=request.user.id)
             serializer = PatientProfileSerializer(profile)
             return Response(serializer.data)
         except PatientProfile.DoesNotExist:
@@ -375,7 +375,7 @@ class PatientProfileAPI(APIView):
             )
 
         # Kiểm tra xem người dùng đã có hồ sơ bệnh nhân chưa
-        if PatientProfile.objects.filter(user=request.user).exists():
+        if PatientProfile.objects.filter(user_id=request.user.id).exists():
             return Response(
                 {"detail": "User already has a patient profile. Use PUT to update."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -393,7 +393,7 @@ class PatientProfileAPI(APIView):
     def put(self, request):
         """Cập nhật hồ sơ bệnh nhân của người dùng hiện tại"""
         try:
-            profile = PatientProfile.objects.get(user=request.user)
+            profile = PatientProfile.objects.get(user_id=request.user.id)
             serializer = PatientProfileSerializer(profile, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -481,6 +481,631 @@ class DoctorProfileAPI(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except DoctorProfile.DoesNotExist:
             return Response({"detail": "Doctor profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+# ============================================================
+# Admin User Management APIs
+# ============================================================
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_staff_user(request):
+    """
+    API endpoint để quản trị viên tạo tài khoản cho nhân viên y tế.
+    Chỉ quản trị viên mới có thể truy cập endpoint này.
+    """
+    # Kiểm tra quyền quản trị viên
+    if request.user.role != 'ADMIN':
+        return Response(
+            {"detail": "Only administrators can create staff accounts."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # Lấy dữ liệu từ request
+    data = request.data
+    role = data.get('role')
+
+    # Kiểm tra vai trò hợp lệ
+    valid_roles = ['DOCTOR', 'NURSE', 'PHARMACIST', 'LAB_TECH', 'INSURANCE', 'ADMIN']
+    if not role or role not in valid_roles:
+        return Response(
+            {"detail": f"Invalid role. Must be one of: {', '.join(valid_roles)}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Tạo mật khẩu ngẫu nhiên nếu không được cung cấp
+    if not data.get('password'):
+        import string
+        import random
+        chars = string.ascii_letters + string.digits
+        data['password'] = ''.join(random.choice(chars) for _ in range(10))
+
+    # Tạo người dùng mới
+    try:
+        user = User.objects.create_user(
+            email=data.get('email'),
+            password=data.get('password'),
+            first_name=data.get('first_name', ''),
+            last_name=data.get('last_name', ''),
+            role=role
+        )
+
+        # Tạo hồ sơ tương ứng với vai trò và thông tin được cung cấp
+        if role == 'DOCTOR':
+            from users.models import DoctorProfile
+            from users.serializers import DoctorProfileSerializer
+
+            # Lấy dữ liệu profile từ request hoặc tạo dict trống
+            profile_data = data.get('doctor_profile', {})
+            # Thêm user vào profile_data
+            profile_data['user'] = user.id
+
+            # Thiết lập các trường bắt buộc nếu chưa có
+            if not profile_data.get('specialization'):
+                profile_data['specialization'] = 'GENERAL_PRACTICE'
+            if not profile_data.get('license_number'):
+                import random
+                import string
+                profile_data['license_number'] = 'DR' + ''.join(random.choices(string.digits, k=6))
+            if not profile_data.get('years_of_experience'):
+                profile_data['years_of_experience'] = 0
+            if not profile_data.get('department'):
+                profile_data['department'] = 'General'
+            # consultation_fee không còn là trường bắt buộc
+            if not profile_data.get('working_days'):
+                profile_data['working_days'] = 'MON,TUE,WED,THU,FRI'
+            if not profile_data.get('working_hours'):
+                profile_data['working_hours'] = '08:00-17:00'
+
+            # Kiểm tra và tạo profile
+            profile_serializer = DoctorProfileSerializer(data=profile_data)
+            if profile_serializer.is_valid():
+                profile = profile_serializer.save()
+            else:
+                # Nếu dữ liệu profile không hợp lệ, tạo profile với các giá trị mặc định
+                DoctorProfile.objects.create(
+                    user=user,
+                    specialization='GENERAL_PRACTICE',
+                    license_number='DR' + ''.join(random.choices(string.digits, k=6)),
+                    years_of_experience=0,
+                    department='General',
+
+                    working_days='MON,TUE,WED,THU,FRI',
+                    working_hours='08:00-17:00'
+                )
+
+        elif role == 'NURSE':
+            from users.models import NurseProfile
+            from users.serializers import NurseProfileSerializer
+
+            # Lấy dữ liệu profile từ request hoặc tạo dict trống
+            profile_data = data.get('nurse_profile', {})
+            # Thêm user vào profile_data
+            profile_data['user'] = user.id
+
+            # Thiết lập các trường bắt buộc nếu chưa có
+            if not profile_data.get('license_number'):
+                import random
+                import string
+                profile_data['license_number'] = 'NR' + ''.join(random.choices(string.digits, k=6))
+            if not profile_data.get('nurse_type'):
+                profile_data['nurse_type'] = 'RN'
+            if not profile_data.get('department'):
+                profile_data['department'] = 'GENERAL'
+
+            # Kiểm tra và tạo profile
+            profile_serializer = NurseProfileSerializer(data=profile_data)
+            if profile_serializer.is_valid():
+                profile = profile_serializer.save()
+            else:
+                # Nếu dữ liệu profile không hợp lệ, tạo profile với các giá trị mặc định
+                NurseProfile.objects.create(
+                    user=user,
+                    license_number='NR' + ''.join(random.choices(string.digits, k=6)),
+                    nurse_type='RN',
+                    department='GENERAL'
+                )
+
+        elif role == 'PHARMACIST':
+            from users.models import PharmacistProfile
+            from users.serializers import PharmacistProfileSerializer
+
+            # Lấy dữ liệu profile từ request hoặc tạo dict trống
+            profile_data = data.get('pharmacist_profile', {})
+            # Thêm user vào profile_data
+            profile_data['user'] = user.id
+
+            # Thiết lập các trường bắt buộc nếu chưa có
+            if not profile_data.get('license_number'):
+                import random
+                import string
+                profile_data['license_number'] = 'PH' + ''.join(random.choices(string.digits, k=6))
+            if not profile_data.get('specialization'):
+                profile_data['specialization'] = 'RETAIL'
+            if not profile_data.get('pharmacy_name'):
+                profile_data['pharmacy_name'] = 'General Pharmacy'
+
+            # Kiểm tra và tạo profile
+            profile_serializer = PharmacistProfileSerializer(data=profile_data)
+            if profile_serializer.is_valid():
+                profile = profile_serializer.save()
+            else:
+                # Nếu dữ liệu profile không hợp lệ, tạo profile với các giá trị mặc định
+                PharmacistProfile.objects.create(
+                    user=user,
+                    license_number='PH' + ''.join(random.choices(string.digits, k=6)),
+                    specialization='RETAIL',
+                    pharmacy_name='General Pharmacy'
+                )
+
+        elif role == 'LAB_TECH':
+            from users.models import LabTechnicianProfile
+            from users.serializers import LabTechnicianProfileSerializer
+
+            # Lấy dữ liệu profile từ request hoặc tạo dict trống
+            profile_data = data.get('lab_technician_profile', {})
+            # Thêm user vào profile_data
+            profile_data['user'] = user.id
+
+            # Thiết lập các trường bắt buộc nếu chưa có
+            if not profile_data.get('license_number'):
+                import random
+                import string
+                profile_data['license_number'] = 'LT' + ''.join(random.choices(string.digits, k=6))
+            if not profile_data.get('specialization'):
+                profile_data['specialization'] = 'GENERAL'
+            if not profile_data.get('laboratory_name'):
+                profile_data['laboratory_name'] = 'General Laboratory'
+
+            # Kiểm tra và tạo profile
+            profile_serializer = LabTechnicianProfileSerializer(data=profile_data)
+            if profile_serializer.is_valid():
+                profile = profile_serializer.save()
+            else:
+                # Nếu dữ liệu profile không hợp lệ, tạo profile với các giá trị mặc định
+                LabTechnicianProfile.objects.create(
+                    user=user,
+                    license_number='LT' + ''.join(random.choices(string.digits, k=6)),
+                    specialization='GENERAL',
+                    laboratory_name='General Laboratory'
+                )
+
+        elif role == 'INSURANCE':
+            from users.models import InsuranceProviderProfile
+            from users.serializers import InsuranceProviderProfileSerializer
+
+            # Lấy dữ liệu profile từ request hoặc tạo dict trống
+            profile_data = data.get('insurance_provider_profile', {})
+            # Thêm user vào profile_data
+            profile_data['user'] = user.id
+
+            # Thiết lập các trường bắt buộc nếu chưa có
+            if not profile_data.get('company_name'):
+                profile_data['company_name'] = 'General Insurance'
+            if not profile_data.get('provider_id'):
+                import random
+                import string
+                profile_data['provider_id'] = 'INS' + ''.join(random.choices(string.digits, k=6))
+            if not profile_data.get('contact_person'):
+                profile_data['contact_person'] = f"{user.first_name} {user.last_name}"
+            if not profile_data.get('contact_email'):
+                profile_data['contact_email'] = user.email
+            if not profile_data.get('contact_phone'):
+                profile_data['contact_phone'] = '0123456789'
+            if not profile_data.get('service_areas'):
+                profile_data['service_areas'] = 'All Areas'
+            if not profile_data.get('available_plans'):
+                profile_data['available_plans'] = 'Basic, Standard, Premium'
+
+            # Kiểm tra và tạo profile
+            profile_serializer = InsuranceProviderProfileSerializer(data=profile_data)
+            if profile_serializer.is_valid():
+                profile = profile_serializer.save()
+            else:
+                # Nếu dữ liệu profile không hợp lệ, tạo profile với các giá trị mặc định
+                InsuranceProviderProfile.objects.create(
+                    user=user,
+                    company_name='General Insurance',
+                    provider_id='INS' + ''.join(random.choices(string.digits, k=6)),
+                    contact_person=f"{user.first_name} {user.last_name}",
+                    contact_email=user.email,
+                    contact_phone='0123456789',
+                    service_areas='All Areas',
+                    available_plans='Basic, Standard, Premium'
+                )
+
+        elif role == 'ADMIN':
+            from users.models import AdminProfile
+            from users.serializers import AdminProfileSerializer
+
+            # Lấy dữ liệu profile từ request hoặc tạo dict trống
+            profile_data = data.get('admin_profile', {})
+            # Thêm user vào profile_data
+            profile_data['user'] = user.id
+
+            # Thiết lập các trường bắt buộc nếu chưa có
+            if not profile_data.get('admin_type'):
+                profile_data['admin_type'] = 'HOSPITAL'
+            if not profile_data.get('employee_id'):
+                import random
+                import string
+                profile_data['employee_id'] = 'ADM' + ''.join(random.choices(string.digits, k=6))
+            if not profile_data.get('position'):
+                profile_data['position'] = 'System Administrator'
+            if not profile_data.get('access_level'):
+                profile_data['access_level'] = 3
+
+            # Kiểm tra và tạo profile
+            profile_serializer = AdminProfileSerializer(data=profile_data)
+            if profile_serializer.is_valid():
+                profile = profile_serializer.save()
+            else:
+                # Nếu dữ liệu profile không hợp lệ, tạo profile với các giá trị mặc định
+                AdminProfile.objects.create(
+                    user=user,
+                    admin_type='HOSPITAL',
+                    employee_id='ADM' + ''.join(random.choices(string.digits, k=6)),
+                    position='System Administrator',
+                    access_level=3
+                )
+
+        # Trả về thông tin người dùng đã tạo
+        serializer = UserDetailSerializer(user)
+        return Response({
+            "user": serializer.data,
+            "password": data.get('password')  # Trả về mật khẩu nếu được tạo tự động
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# ============================================================
+# Doctors API
+# ============================================================
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def list_doctors(request):
+    """
+    API endpoint để lấy danh sách bác sĩ.
+    Tất cả người dùng đã xác thực đều có thể truy cập endpoint này.
+    """
+    # Lấy danh sách người dùng có vai trò DOCTOR
+    doctors = User.objects.filter(role='DOCTOR', is_active=True)
+
+    # Lọc theo chuyên khoa nếu có
+    specialty = request.query_params.get('specialty')
+    if specialty:
+        doctors = doctors.filter(doctor_profile__specialization=specialty)
+
+    # Tìm kiếm theo tên nếu có
+    search = request.query_params.get('search')
+    if search:
+        doctors = doctors.filter(
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search)
+        )
+
+    # Sử dụng serializer để trả về dữ liệu
+    serializer = UserDetailSerializer(doctors, many=True)
+    return Response(serializer.data)
+
+# ============================================================
+# Specialties API
+# ============================================================
+
+@api_view(['GET'])
+def specialties(request):
+    """
+    API endpoint for getting specialties.
+    """
+    # Xác thực người dùng
+    if not request.user.is_authenticated:
+        return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Lấy tham số department nếu có
+    department = request.query_params.get('department', None)
+
+    # Lấy danh sách chuyên khoa từ model DoctorProfile
+    specialties = []
+    for choice in DoctorProfile.SPECIALIZATION_CHOICES:
+        specialty_id = choice[0]
+
+        # Nếu có tham số department, chỉ trả về các chuyên khoa thuộc khoa đó
+        if department:
+            # Kiểm tra xem chuyên khoa có thuộc khoa được chọn không
+            if department == 'KHOA_NOI' and specialty_id.startswith('NOI_'):
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+            elif department == 'KHOA_NGOAI' and specialty_id.startswith('NGOAI_'):
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+            elif department == 'KHOA_SAN' and (specialty_id.startswith('SAN_') or specialty_id.startswith('PHU_') or specialty_id == 'VO_SINH'):
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+            elif department == 'KHOA_NHI' and specialty_id.startswith('NHI_'):
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+            elif department == 'KHOA_MAT' and specialty_id == 'MAT':
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+            elif department == 'KHOA_TMH' and specialty_id == 'TAI_MUI_HONG':
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+            elif department == 'KHOA_RHM' and specialty_id == 'RANG_HAM_MAT':
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+            elif department == 'KHOA_UNG_BUOU' and specialty_id == 'UNG_BUOU':
+                specialties.append({
+                    'id': specialty_id,
+                    'name': choice[1],
+                    'description': _get_description_for_specialty(specialty_id),
+                    'department': department
+                })
+        else:
+            # Nếu không có tham số department, trả về tất cả chuyên khoa
+            # Xác định khoa cho chuyên khoa
+            department_id = None
+            if specialty_id.startswith('NOI_'):
+                department_id = 'KHOA_NOI'
+            elif specialty_id.startswith('NGOAI_'):
+                department_id = 'KHOA_NGOAI'
+            elif specialty_id.startswith('SAN_') or specialty_id.startswith('PHU_') or specialty_id == 'VO_SINH':
+                department_id = 'KHOA_SAN'
+            elif specialty_id.startswith('NHI_'):
+                department_id = 'KHOA_NHI'
+            elif specialty_id == 'MAT':
+                department_id = 'KHOA_MAT'
+            elif specialty_id == 'TAI_MUI_HONG':
+                department_id = 'KHOA_TMH'
+            elif specialty_id == 'RANG_HAM_MAT':
+                department_id = 'KHOA_RHM'
+            elif specialty_id == 'UNG_BUOU':
+                department_id = 'KHOA_UNG_BUOU'
+
+            specialties.append({
+                'id': specialty_id,
+                'name': choice[1],
+                'description': _get_description_for_specialty(specialty_id),
+                'department': department_id
+            })
+
+    return Response(specialties)
+
+@api_view(['GET'])
+def departments(request):
+    """
+    API endpoint for getting departments.
+    """
+    # Xác thực người dùng
+    if not request.user.is_authenticated:
+        return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Lấy danh sách khoa từ model NurseProfile
+    departments = []
+    for choice in NurseProfile.DEPARTMENT_CHOICES:
+        department_id = choice[0]
+
+        # Đếm số lượng chuyên khoa thuộc khoa này
+        specialty_count = 0
+        specialties = []
+
+        for specialty in DoctorProfile.SPECIALIZATION_CHOICES:
+            specialty_id = specialty[0]
+
+            # Kiểm tra xem chuyên khoa có thuộc khoa này không
+            if department_id == 'KHOA_NOI' and specialty_id.startswith('NOI_'):
+                specialty_count += 1
+                specialties.append(specialty_id)
+            elif department_id == 'KHOA_NGOAI' and specialty_id.startswith('NGOAI_'):
+                specialty_count += 1
+                specialties.append(specialty_id)
+            elif department_id == 'KHOA_SAN' and (specialty_id.startswith('SAN_') or specialty_id.startswith('PHU_') or specialty_id == 'VO_SINH'):
+                specialty_count += 1
+                specialties.append(specialty_id)
+            elif department_id == 'KHOA_NHI' and specialty_id.startswith('NHI_'):
+                specialty_count += 1
+                specialties.append(specialty_id)
+            elif department_id == 'KHOA_MAT' and specialty_id == 'MAT':
+                specialty_count += 1
+                specialties.append(specialty_id)
+            elif department_id == 'KHOA_TMH' and specialty_id == 'TAI_MUI_HONG':
+                specialty_count += 1
+                specialties.append(specialty_id)
+            elif department_id == 'KHOA_RHM' and specialty_id == 'RANG_HAM_MAT':
+                specialty_count += 1
+                specialties.append(specialty_id)
+            elif department_id == 'KHOA_UNG_BUOU' and specialty_id == 'UNG_BUOU':
+                specialty_count += 1
+                specialties.append(specialty_id)
+
+        departments.append({
+            'id': department_id,
+            'name': choice[1],
+            'description': _get_description_for_department(department_id),
+            'specialty_count': specialty_count,
+            'specialties': specialties
+        })
+
+    return Response(departments)
+
+def _get_description_for_department(department):
+    """
+    Get description for department.
+    """
+    descriptions = {
+        'KHOA_NOI': 'Khoa chịu trách nhiệm chẩn đoán và điều trị các bệnh nội khoa',
+        'KHOA_NGOAI': 'Khoa chịu trách nhiệm phẫu thuật và điều trị các bệnh ngoại khoa',
+        'KHOA_SAN': 'Khoa chăm sóc sức khỏe phụ nữ và thai sản',
+        'KHOA_NHI': 'Khoa chăm sóc sức khỏe trẻ em từ sơ sinh đến 16 tuổi',
+        'KHOA_CAP_CUU': 'Khoa tiếp nhận và xử lý các trường hợp cấp cứu',
+        'KHOA_XET_NGHIEM': 'Khoa thực hiện các xét nghiệm và phân tích mẫu',
+        'KHOA_CHAN_DOAN_HINH_ANH': 'Khoa thực hiện các kỹ thuật chẩn đoán hình ảnh như X-quang, CT, MRI',
+        'KHOA_MAT': 'Khoa chuyên về chăm sóc và điều trị các vấn đề về mắt',
+        'KHOA_TMH': 'Khoa chuyên về chăm sóc và điều trị các vấn đề về tai, mũi, họng',
+        'KHOA_RHM': 'Khoa chuyên về chăm sóc và điều trị các vấn đề về răng, hàm, mặt',
+        'KHOA_UNG_BUOU': 'Khoa chuyên về chẩn đoán và điều trị các loại ung thư',
+        'KHOA_HOI_SUC': 'Khoa chăm sóc đặc biệt cho bệnh nhân nặng',
+        'KHOA_KHAC': 'Các khoa khác trong bệnh viện'
+    }
+    return descriptions.get(department, '')
+
+# ============================================================
+# Insurance Information API
+# ============================================================
+
+@api_view(['GET', 'POST'])
+@permission_classes([permissions.IsAuthenticated])
+def list_insurance_information(request):
+    """
+    API endpoint để lấy danh sách hoặc tạo thông tin bảo hiểm.
+    Lọc theo patient_id nếu được cung cấp.
+    """
+    # Xử lý GET request
+    if request.method == 'GET':
+        # Kiểm tra quyền truy cập
+        user = request.user
+        patient_id = request.query_params.get('patient_id')
+
+        # Nếu không phải ADMIN, INSURANCE hoặc DOCTOR, chỉ cho phép xem thông tin bảo hiểm của chính mình
+        if user.role not in ['ADMIN', 'INSURANCE', 'DOCTOR'] and str(user.id) != patient_id:
+            return Response(
+                {"detail": "You do not have permission to view this insurance information."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Lọc theo patient_id nếu được cung cấp
+        if patient_id:
+            # Lấy hồ sơ bệnh nhân
+            try:
+                patient_profile = PatientProfile.objects.get(user_id=patient_id)
+            except PatientProfile.DoesNotExist:
+                return Response(
+                    {"detail": "Patient profile not found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Lấy thông tin bảo hiểm từ hồ sơ bệnh nhân
+            insurance_info = InsuranceInformation.objects.filter(id=patient_profile.insurance_information_id) if patient_profile.insurance_information_id else []
+        else:
+            # Nếu không có patient_id, trả về tất cả thông tin bảo hiểm (chỉ cho ADMIN và INSURANCE)
+            if user.role not in ['ADMIN', 'INSURANCE']:
+                return Response(
+                    {"detail": "You must provide a patient_id."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            insurance_info = InsuranceInformation.objects.all()
+
+        # Serialize dữ liệu
+        serializer = InsuranceInformationSerializer(insurance_info, many=True)
+
+        # Trả về kết quả
+        return Response({
+            "count": len(serializer.data),
+            "next": None,
+            "previous": None,
+            "results": serializer.data
+        })
+
+    # Xử lý POST request
+    elif request.method == 'POST':
+        # Kiểm tra quyền truy cập
+        if request.user.role not in ['ADMIN', 'INSURANCE']:
+            return Response(
+                {"detail": "Only administrators and insurance providers can create insurance information."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Tạo thông tin bảo hiểm mới
+        serializer = InsuranceInformationSerializer(data=request.data)
+        if serializer.is_valid():
+            insurance_info = serializer.save()
+
+            # Cập nhật hồ sơ bệnh nhân nếu có patient_id
+            patient_id = request.data.get('patient_id')
+            if patient_id:
+                try:
+                    patient_profile = PatientProfile.objects.get(user_id=patient_id)
+                    patient_profile.insurance_information = insurance_info
+                    patient_profile.save()
+                except PatientProfile.DoesNotExist:
+                    pass  # Không cập nhật nếu không tìm thấy hồ sơ bệnh nhân
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _get_description_for_specialty(specialty):
+    """
+    Get description for specialty.
+    """
+    descriptions = {
+        # Chuyên khoa thuộc Khoa Nội
+        'NOI_TIM_MACH': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý tim mạch',
+        'NOI_TIEU_HOA': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý đường tiêu hóa',
+        'NOI_HO_HAP': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý hô hấp',
+        'NOI_THAN': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý thận và tiết niệu',
+        'NOI_TIET': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý nội tiết',
+        'NOI_THAN_KINH': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý thần kinh',
+        'NOI_DA_LIEU': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý da liễu',
+        'NOI_TONG_QUAT': 'Chuyên khoa về chẩn đoán và điều trị các bệnh nội khoa tổng quát',
+
+        # Chuyên khoa thuộc Khoa Ngoại
+        'NGOAI_CHINH_HINH': 'Chuyên khoa về chấn thương và chỉnh hình xương khớp',
+        'NGOAI_TIET_NIEU': 'Chuyên khoa về phẫu thuật và điều trị các bệnh lý tiết niệu',
+        'NGOAI_THAN_KINH': 'Chuyên khoa về phẫu thuật và điều trị các bệnh lý thần kinh',
+        'NGOAI_LONG_NGUC': 'Chuyên khoa về phẫu thuật và điều trị các bệnh lý lồng ngực và mạch máu',
+        'NGOAI_TIEU_HOA': 'Chuyên khoa về phẫu thuật và điều trị các bệnh lý tiêu hóa',
+        'NGOAI_TONG_QUAT': 'Chuyên khoa về phẫu thuật và điều trị các bệnh ngoại khoa tổng quát',
+
+        # Chuyên khoa thuộc Khoa Sản - Phụ khoa
+        'SAN_KHOA': 'Chuyên khoa về chăm sóc thai sản và đứa trẻ sơ sinh',
+        'PHU_KHOA': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý phụ khoa',
+        'VO_SINH': 'Chuyên khoa về chẩn đoán và điều trị vô sinh và hiếm muộn',
+
+        # Chuyên khoa thuộc Khoa Nhi
+        'NHI_TONG_QUAT': 'Chuyên khoa về chăm sóc sức khỏe trẻ em tổng quát',
+        'NHI_TIM_MACH': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý tim mạch ở trẻ em',
+        'NHI_THAN_KINH': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý thần kinh ở trẻ em',
+        'NHI_SO_SINH': 'Chuyên khoa về chăm sóc trẻ sơ sinh và trẻ sinh non',
+
+        # Các chuyên khoa khác
+        'MAT': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý về mắt',
+        'TAI_MUI_HONG': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý về tai, mũi, họng',
+        'RANG_HAM_MAT': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý về răng, hàm, mặt',
+        'TAM_THAN': 'Chuyên khoa về chẩn đoán và điều trị các bệnh lý tâm thần',
+        'UNG_BUOU': 'Chuyên khoa về chẩn đoán và điều trị các loại ung thư',
+        'DA_KHOA': 'Chuyên khoa về chẩn đoán và điều trị nhiều loại bệnh khác nhau',
+        'KHAC': 'Các chuyên khoa khác'
+    }
+    return descriptions.get(specialty, '')
 
 # ============================================================
 # Nurse Profile APIs

@@ -15,9 +15,16 @@ const apiClient = axios.create({
   timeout: 10000,
 })
 
-// Interceptor để thêm token vào header
+// Interceptor để thêm token vào header và log request
 apiClient.interceptors.request.use(
   (config) => {
+    // Log request để debug
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
+      data: config.data,
+      params: config.params,
+      headers: config.headers
+    });
+
     // Thêm token vào header nếu có
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token")
@@ -33,12 +40,24 @@ apiClient.interceptors.request.use(
   },
 )
 
-// Interceptor để xử lý refresh token khi token hết hạn
+// Interceptor để xử lý refresh token khi token hết hạn và log response
 apiClient.interceptors.response.use(
   (response) => {
+    // Log response để debug
+    console.log(`[API Response] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+      data: response.data,
+      headers: response.headers
+    });
     return response
   },
   async (error) => {
+    // Log lỗi response để debug
+    console.error(`[API Error] ${error.response?.status || 'Unknown'} ${error.config?.method?.toUpperCase() || 'Unknown'} ${error.config?.url || 'Unknown'}`, {
+      message: error.message,
+      response: error.response?.data,
+      config: error.config
+    });
+
     const originalRequest = error.config
 
     // Kiểm tra xem lỗi có phải do mạng không

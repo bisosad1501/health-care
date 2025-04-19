@@ -16,7 +16,7 @@ class Medication(models.Model):
         ('PATCH', 'Patch'),
         ('OTHER', 'Other'),
     ]
-    
+
     CATEGORY_CHOICES = [
         ('ANTIBIOTIC', 'Antibiotic'),
         ('ANALGESIC', 'Analgesic'),
@@ -30,7 +30,7 @@ class Medication(models.Model):
         ('SUPPLEMENT', 'Supplement'),
         ('OTHER', 'Other'),
     ]
-    
+
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     dosage_form = models.CharField(max_length=20, choices=DOSAGE_FORM_CHOICES)
@@ -42,10 +42,10 @@ class Medication(models.Model):
     contraindications = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.name} {self.strength} {self.get_dosage_form_display()}"
-    
+
     class Meta:
         ordering = ['name', 'strength']
         indexes = [
@@ -65,18 +65,23 @@ class Prescription(models.Model):
         ('CANCELLED', 'Cancelled'),
         ('EXPIRED', 'Expired'),
     ]
-    
+
     patient_id = models.IntegerField()
     doctor_id = models.IntegerField()
+    diagnosis_id = models.IntegerField(null=True, blank=True, help_text="ID of the diagnosis in medical-record-service")
+    encounter_id = models.IntegerField(null=True, blank=True, help_text="ID of the encounter in medical-record-service")
+    # Thông tin chi tiết về chẩn đoán
+    diagnosis_code = models.CharField(max_length=20, blank=True, null=True, help_text="Mã chẩn đoán (ICD-10)")
+    diagnosis_description = models.TextField(blank=True, null=True, help_text="Mô tả chẩn đoán")
     date_prescribed = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"Prescription #{self.id} - Patient {self.patient_id}"
-    
+
     class Meta:
         ordering = ['-date_prescribed']
         indexes = [
@@ -99,10 +104,10 @@ class PrescriptionItem(models.Model):
     quantity = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.medication.name} - {self.quantity} units"
-    
+
     class Meta:
         ordering = ['prescription', 'id']
         indexes = [
@@ -123,10 +128,10 @@ class Inventory(models.Model):
     location = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.medication.name} - Batch {self.batch_number} - {self.quantity} units"
-    
+
     class Meta:
         ordering = ['expiry_date']
         indexes = [
@@ -146,7 +151,7 @@ class Dispensing(models.Model):
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
     ]
-    
+
     prescription = models.ForeignKey(Prescription, related_name='dispensings', on_delete=models.CASCADE)
     pharmacist_id = models.IntegerField()
     date_dispensed = models.DateTimeField()
@@ -154,10 +159,10 @@ class Dispensing(models.Model):
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"Dispensing #{self.id} for Prescription #{self.prescription.id}"
-    
+
     class Meta:
         ordering = ['-date_dispensed']
         indexes = [
@@ -178,10 +183,10 @@ class DispensingItem(models.Model):
     quantity_dispensed = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.prescription_item.medication.name} - {self.quantity_dispensed} units"
-    
+
     class Meta:
         ordering = ['dispensing', 'id']
         indexes = [

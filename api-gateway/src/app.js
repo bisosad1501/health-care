@@ -95,9 +95,9 @@ const authLimiter = rateLimit({
 });
 
 // Apply rate limiters
-app.use('/api/auth/login', authLimiter); // Apply to login endpoint
-app.use('/api/auth/register', authLimiter); // Apply to registration endpoint
-app.use(defaultLimiter); // Apply default limiter to all other routes
+// app.use('/api/auth/login', authLimiter); // Apply to login endpoint
+// app.use('/api/auth/register', authLimiter); // Apply to registration endpoint
+// app.use(defaultLimiter); // Apply default limiter to all other routes
 
 // Logging middleware
 app.use(morgan('combined'));

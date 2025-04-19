@@ -39,10 +39,16 @@ echo "Setting up notifications..."
 ./setup_notifications.sh
 
 # Start Celery worker
+echo "Starting Celery worker..."
 celery -A core worker --loglevel=info &
 
 # Start Celery beat
+echo "Starting Celery beat..."
 celery -A core beat --loglevel=info &
+
+# Start Redis notification consumer
+echo "Starting Redis notification consumer..."
+python manage.py consume_notifications --sleep 1 --batch-size 10 &
 
 # Start server
 echo "Starting server..."

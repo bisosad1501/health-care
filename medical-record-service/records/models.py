@@ -19,6 +19,15 @@ class Encounter(models.Model):
     medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='encounters')
     encounter_date = models.DateTimeField(default=timezone.now)
     doctor_id = models.IntegerField(help_text="ID của bác sĩ phụ trách phiên khám", null=True, blank=True)
+    appointment_id = models.IntegerField(help_text="ID của cuộc hẹn trong appointment-service", null=True, blank=True)
+    chief_complaint = models.TextField(help_text="Lý do khám chính", blank=True, null=True)
+    encounter_type = models.CharField(max_length=20, choices=[
+        ('OUTPATIENT', 'Outpatient'),
+        ('INPATIENT', 'Inpatient'),
+        ('EMERGENCY', 'Emergency'),
+        ('FOLLOWUP', 'Follow-up'),
+        ('TELECONSULTATION', 'Teleconsultation'),
+    ], default='OUTPATIENT')
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -39,6 +48,7 @@ class Diagnosis(models.Model):
     diagnosis_description = models.TextField()
     diagnosis_date = models.DateField()
     notes = models.TextField(blank=True, null=True)
+    prescription_ids = models.JSONField(default=list, blank=True, help_text="Danh sách ID của các đơn thuốc liên quan từ pharmacy-service")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -210,7 +220,7 @@ class LabTest(models.Model):
     """Xét nghiệm y tế trong phiên khám"""
     STATUS_CHOICES = [
         ('ORDERED', 'Ordered'),
-        ('COLLECTED', 'Specimen Collected'),
+        ('SAMPLE_COLLECTED', 'Specimen Collected'),
         ('IN_PROGRESS', 'In Progress'),
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
@@ -224,6 +234,7 @@ class LabTest(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ORDERED')
     collection_date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
+    lab_service_id = models.IntegerField(help_text="ID của xét nghiệm trong laboratory-service", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

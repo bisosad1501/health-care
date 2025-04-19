@@ -29,41 +29,18 @@ const diagnosisData = [
   { name: "Khác", value: 15, color: "#8884D8" },
 ]
 
-// Dữ liệu mẫu cho lịch hẹn
-const appointments = [
-  {
-    id: 1,
-    patientName: "Nguyễn Văn A",
-    date: new Date(2025, 3, 12),
-    time: "09:00 - 09:30",
-    reason: "Khám định kỳ",
-    status: "confirmed",
-  },
-  {
-    id: 2,
-    patientName: "Trần Thị B",
-    date: new Date(2025, 3, 12),
-    time: "10:00 - 10:30",
-    reason: "Đau đầu",
-    status: "confirmed",
-  },
-  {
-    id: 3,
-    patientName: "Lê Văn C",
-    date: new Date(2025, 3, 12),
-    time: "11:00 - 11:30",
-    reason: "Đau lưng",
-    status: "confirmed",
-  },
-  {
-    id: 4,
-    patientName: "Phạm Thị D",
-    date: new Date(2025, 3, 13),
-    time: "09:00 - 09:30",
-    reason: "Khám theo dõi",
-    status: "scheduled",
-  },
-]
+import { useEffect, useState } from 'react'
+import appointmentService from '@/lib/api/appointment-service'
+
+// Kiểu dữ liệu cho lịch hẹn
+interface DoctorAppointment {
+  id: number
+  patientName: string
+  date: Date
+  time: string
+  reason: string
+  status: string
+}
 
 // Dữ liệu mẫu cho bệnh nhân
 const patients = [
@@ -130,6 +107,49 @@ const recentActivities = [
 ]
 
 export default function DoctorDashboard() {
+  const [appointments, setAppointments] = useState<DoctorAppointment[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchDoctorAppointments()
+  }, [])
+
+  const fetchDoctorAppointments = async () => {
+    try {
+      setLoading(true)
+      // Lấy ID bác sĩ từ localStorage
+      const userJson = localStorage.getItem('user')
+      if (!userJson) {
+        console.error('User not found in localStorage')
+        setLoading(false)
+        return
+      }
+
+      const user = JSON.parse(userJson)
+      const doctorId = user.id
+
+      // Lấy danh sách lịch hẹn của bác sĩ
+      const response = await appointmentService.getDoctorAppointments(doctorId)
+      console.log('Doctor appointments:', response)
+
+      // Chuyển đổi dữ liệu sang định dạng hiển thị
+      const formattedAppointments = response.map(appointment => ({
+        id: appointment.id,
+        patientName: `${appointment.patient_info?.first_name || ''} ${appointment.patient_info?.last_name || ''}`.trim() || 'Bệnh nhân',
+        date: new Date(appointment.time_slot?.date || new Date()),
+        time: `${appointment.time_slot?.start_time?.substring(0, 5) || ''} - ${appointment.time_slot?.end_time?.substring(0, 5) || ''}`,
+        reason: appointment.reason_text || '',
+        status: appointment.status?.toLowerCase() || 'scheduled'
+      }))
+
+      setAppointments(formattedAppointments)
+      setLoading(false)
+    } catch (error) {
+      console.error('Error fetching doctor appointments:', error)
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader title="Bảng điều khiển Bác sĩ" description="Quản lý lịch khám, bệnh nhân và hồ sơ y tế">

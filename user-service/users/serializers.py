@@ -133,6 +133,31 @@ class UserDetailSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'date_joined')
 
+    def to_representation(self, instance):
+        """Chỉ bao gồm profile phù hợp với vai trò của người dùng"""
+        ret = super().to_representation(instance)
+
+        # Bản đồ vai trò với profile tương ứng
+        role_profile_mapping = {
+            'PATIENT': 'patient_profile',
+            'DOCTOR': 'doctor_profile',
+            'NURSE': 'nurse_profile',
+            'PHARMACIST': 'pharmacist_profile',
+            'LAB_TECH': 'lab_technician_profile',
+            'INSURANCE': 'insurance_provider_profile',
+            'ADMIN': 'admin_profile'
+        }
+
+        # Lấy profile tương ứng với vai trò
+        role_profile = role_profile_mapping.get(instance.role)
+
+        # Loại bỏ tất cả các profile không phù hợp với vai trò
+        for profile in role_profile_mapping.values():
+            if profile != role_profile:
+                ret.pop(profile, None)
+
+        return ret
+
 class UserBasicSerializer(serializers.ModelSerializer):
     """Serializer cơ bản cho người dùng, chỉ bao gồm thông tin cơ bản"""
     class Meta:

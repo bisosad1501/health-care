@@ -140,6 +140,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'EXCEPTION_HANDLER': 'appointments.exception_handlers.appointment_exception_handler',
 }
 
 # API Gateway URL
@@ -160,3 +161,27 @@ REFRESH_TOKEN_LIFETIME = timedelta(days=7)
 ROTATE_REFRESH_TOKENS = False
 SESSION_TTL = 86400  # 1 day in seconds
 MAX_SESSIONS_PER_USER = 5
+
+# Appointment Reminder Config - Thời gian tính bằng giờ trước khi lịch hẹn diễn ra
+APPOINTMENT_REMINDERS = [
+    {'hours': 24, 'type': 'EMAIL', 'message_template': 'Nhắc nhở: Bạn có lịch hẹn khám bệnh với {doctor_name} vào ngày {date} lúc {time} {location}.'},
+    {'hours': 3, 'type': 'EMAIL', 'message_template': 'Nhắc nhở: Lịch hẹn của bạn với {doctor_name} sẽ diễn ra trong vòng 3 giờ nữa {location}.'},
+    {'hours': 1, 'type': 'SMS', 'message_template': 'Nhắc nhở gấp: Bạn có lịch hẹn khám bệnh với {doctor_name} trong vòng 1 giờ nữa {location}. Vui lòng đến sớm 15 phút để chuẩn bị.'},
+]
+
+# Tích hợp với các service khác
+SERVICE_INTEGRATIONS = {
+    'USER_SERVICE_URL': os.environ.get('USER_SERVICE_URL', 'http://user-service:8000'),
+    'MEDICAL_RECORD_SERVICE_URL': os.environ.get('MEDICAL_RECORD_SERVICE_URL', 'http://medical-record-service:8000'),
+    'NOTIFICATION_SERVICE_URL': os.environ.get('NOTIFICATION_SERVICE_URL', 'http://notification-service:8000'),
+    'BILLING_SERVICE_URL': os.environ.get('BILLING_SERVICE_URL', 'http://billing-service:8000'),
+    'PHARMACY_SERVICE_URL': os.environ.get('PHARMACY_SERVICE_URL', 'http://pharmacy-service:8000'),
+    'LABORATORY_SERVICE_URL': os.environ.get('LABORATORY_SERVICE_URL', 'http://laboratory-service:8000'),
+}
+
+# Cấu hình retry cho các API call tích hợp
+API_RETRY_CONFIG = {
+    'MAX_RETRIES': 3,
+    'RETRY_DELAY': 1,  # seconds
+    'TIMEOUT': 5,  # seconds
+}

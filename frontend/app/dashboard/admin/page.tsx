@@ -1,3 +1,5 @@
+"use client"
+
 import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -216,9 +218,9 @@ export default function AdminDashboard() {
               header: "Trạng thái",
               cell: (item: any) => (
                 <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  item.status === "Đang hoạt động" ? "bg-green-100 text-green-800" : 
-                  item.status === "Không hoạt động" ? "bg-gray-100 text-gray-800" : 
-                  item.status === "Bị khóa" ? "bg-red-100 text-red-800" : 
+                  item.status === "Đang hoạt động" ? "bg-green-100 text-green-800" :
+                  item.status === "Không hoạt động" ? "bg-gray-100 text-gray-800" :
+                  item.status === "Bị khóa" ? "bg-red-100 text-red-800" :
                   "bg-gray-100 text-gray-800"
                 }`}>
                   {item.status}
@@ -278,8 +280,28 @@ export default function AdminDashboard() {
                 header: "Trạng thái",
                 cell: (item: any) => (
                   <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    item.status === "Đang hoạt động" ? "bg-green-100 text-green-800" : 
-                    item.status === "Không hoạt động" ? "bg-gray-100 text-gray-800" : 
-                    item.status === "Bị khóa" ? "bg-red-100 text-red-800" : 
+                    item.status === "Đang hoạt động" ? "bg-green-100 text-green-800" :
+                    item.status === "Không hoạt động" ? "bg-gray-100 text-gray-800" :
+                    item.status === "Bị khóa" ? "bg-red-100 text-red-800" :
                     "bg-gray-100 text-gray-800"
-                  }`}>\
+                  }`}>
+                    {item.status}
+                  </div>
+                ),
+              },
+            ]}
+            data={users}
+            keyField="id"
+          />
+        </TabsContent>
+        <TabsContent value="activity" className="space-y-4">
+          <DashboardActivity
+            title="Nhật ký hoạt động"
+            description="Nhật ký hoạt động chi tiết của hệ thống"
+            items={systemActivities}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}

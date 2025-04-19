@@ -25,6 +25,7 @@ const createServiceProxy = (serviceName, serviceUrl, options = {}) => {
       // QUAN TRỌNG: Luôn chuyển tiếp Authorization header nguyên vẹn
       if (req.headers.authorization) {
         console.log(`[${serviceName.toUpperCase()}] Forwarding Authorization header`);
+        proxyReq.setHeader('Authorization', req.headers.authorization);
       }
 
       // Xóa headers không cần thiết để tránh xung đột

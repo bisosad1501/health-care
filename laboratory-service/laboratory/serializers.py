@@ -60,7 +60,7 @@ class LabTestSerializer(serializers.ModelSerializer):
 class LabTestCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabTest
-        fields = ['patient_id', 'doctor_id', 'test_type', 'scheduled_date', 'notes']
+        fields = ['id', 'patient_id', 'doctor_id', 'test_type', 'scheduled_date', 'notes']
 
 
 class NotificationSerializer(serializers.ModelSerializer):

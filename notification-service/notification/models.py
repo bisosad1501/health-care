@@ -105,3 +105,56 @@ class NotificationSchedule(models.Model):
 
     def __str__(self):
         return f"{self.get_notification_type_display()} scheduled for {self.scheduled_at}"
+
+
+class InAppNotification(models.Model):
+    """
+    Model representing an in-app notification that will be displayed in the user interface.
+    This model is specifically for storing notifications that are shown within the application.
+    """
+    class Status(models.TextChoices):
+        UNREAD = 'UNREAD', _('Unread')
+        READ = 'READ', _('Read')
+        ARCHIVED = 'ARCHIVED', _('Archived')
+
+    recipient_id = models.IntegerField()
+    recipient_type = models.CharField(max_length=20, choices=Notification.RecipientType.choices)
+    notification_type = models.CharField(
+        max_length=20, 
+        choices=Notification.NotificationType.choices,
+        default=Notification.NotificationType.SYSTEM
+    )
+    title = models.CharField(max_length=255, blank=True)
+    content = models.TextField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.UNREAD)
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
+    reference_type = models.CharField(max_length=20, blank=True, null=True)
+    is_urgent = models.BooleanField(default=False)
+    read_at = models.DateTimeField(blank=True, null=True)
+    service = models.CharField(max_length=50, blank=True)
+    event_type = models.CharField(max_length=50, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient_id', 'recipient_type']),
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"Notification for {self.recipient_type} {self.recipient_id}: {self.title}"
+
+    def mark_as_read(self):
+        """Mark the notification as read."""
+        self.status = self.Status.READ
+        self.read_at = timezone.now()
+        self.save(update_fields=['status', 'read_at', 'updated_at'])
+
+    def archive(self):
+        """Archive the notification."""
+        self.status = self.Status.ARCHIVED
+        self.save(update_fields=['status', 'updated_at'])

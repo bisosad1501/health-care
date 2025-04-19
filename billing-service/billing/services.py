@@ -51,7 +51,13 @@ class UserServiceClient(ServiceClient):
         """
         Get insurance provider information from the User Service.
         """
-        return self.get(f"/api/insurance-providers/{provider_id}/", headers=headers)
+        # Get all insurance providers and filter by ID
+        providers = self.get("/api/admin/insurance-provider-profiles/", headers=headers)
+        if providers:
+            for provider in providers:
+                if provider.get('id') == provider_id:
+                    return provider
+        return None
 
     def get_patient_insurance(self, patient_id, headers=None):
         """
@@ -196,18 +202,29 @@ def create_invoice_from_lab_test(lab_test_id, headers=None):
         logger.error(f"Could not retrieve test type for lab test {lab_test_id}")
         return None
 
+    # Get current date if scheduled_date is not available
+    from django.utils import timezone
+    current_date = timezone.now().strftime('%Y-%m-%d')
+
+    # Use scheduled_date if available, otherwise use current date
+    issue_date = lab_test.get('scheduled_date', current_date)
+    if issue_date and isinstance(issue_date, str) and 'T' in issue_date:
+        issue_date = issue_date.split('T')[0]
+    else:
+        issue_date = current_date
+
     # Create invoice
     invoice = Invoice.objects.create(
         patient_id=lab_test['patient_id'],
         invoice_number=f"INV-LAB-{lab_test_id}",
         status=Invoice.Status.PENDING,
-        issue_date=lab_test['scheduled_date'].split('T')[0],  # Extract date part
-        due_date=lab_test['scheduled_date'].split('T')[0],  # Due same day
+        issue_date=issue_date,
+        due_date=issue_date,  # Due same day
         total_amount=Decimal(test_type.get('price', '0')),
         discount=Decimal('0'),
         tax=Decimal('0'),
         final_amount=Decimal(test_type.get('price', '0')),
-        notes=f"Invoice for lab test on {lab_test['scheduled_date']}"
+        notes=f"Invoice for lab test on {issue_date}"
     )
 
     # Create invoice item
@@ -391,7 +408,7 @@ def apply_insurance_to_invoice(invoice, headers=None):
         return None
 
     # Get insurance provider details
-    provider_id = active_insurance.get('insurance_provider')
+    provider_id = active_insurance.get('provider')
     provider = user_client.get_insurance_provider(provider_id, headers) if provider_id else None
 
     if not provider:
@@ -399,7 +416,15 @@ def apply_insurance_to_invoice(invoice, headers=None):
         return None
 
     # Calculate coverage based on insurance policy
-    coverage_percentage = Decimal(active_insurance.get('coverage_percentage', '0'))
+    # Try to get coverage_percentage directly, or calculate from coinsurance_rate
+    coverage_percentage = Decimal('0')
+    if 'coverage_percentage' in active_insurance and active_insurance['coverage_percentage']:
+        coverage_percentage = Decimal(str(active_insurance['coverage_percentage']))
+    elif 'coinsurance_rate' in active_insurance and active_insurance['coinsurance_rate']:
+        # coinsurance_rate is the percentage the patient pays, so coverage is (100 - coinsurance_rate)
+        coinsurance_rate = Decimal(str(active_insurance['coinsurance_rate']))
+        coverage_percentage = Decimal('100') - (coinsurance_rate * Decimal('100'))
+
     if coverage_percentage <= 0:
         logger.info(f"Insurance coverage percentage is 0 for patient {invoice.patient_id}")
         return None
@@ -414,12 +439,20 @@ def apply_insurance_to_invoice(invoice, headers=None):
     invoice.notes += f"\nInsurance coverage: {coverage_percentage}% by {provider.get('name', 'Unknown Provider')}"
     invoice.save()
 
+    # Generate a unique claim number
+    import uuid
+    from django.utils import timezone
+
+    # Format: CLM-{provider_id}-{invoice_id}-{timestamp}-{random_uuid}
+    claim_number = f"CLM-{provider_id}-{invoice.id}-{int(timezone.now().timestamp())}-{str(uuid.uuid4())[:8]}"
+
     # Create insurance claim
     claim = InsuranceClaim.objects.create(
         invoice=invoice,
         insurance_provider_id=provider_id,
         policy_number=active_insurance.get('policy_number', ''),
         member_id=active_insurance.get('member_id', ''),
+        claim_number=claim_number,  # Add unique claim number
         claim_amount=covered_amount,
         status=InsuranceClaim.Status.SUBMITTED,
         submission_date=invoice.issue_date,
@@ -441,7 +474,7 @@ def apply_insurance_to_invoice(invoice, headers=None):
 
         # Send to notification service
         requests.post(
-            f"{settings.API_GATEWAY_URL}/api/notifications/events",
+            f"{settings.API_GATEWAY_URL}/api/events",
             json=notification_data,
             headers=headers,
             timeout=5

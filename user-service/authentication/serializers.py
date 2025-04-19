@@ -10,6 +10,7 @@ class UserAuthSerializer(serializers.ModelSerializer):
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     password_confirm = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    role = serializers.CharField(default='PATIENT', read_only=True)  # Chỉ cho phép vai trò PATIENT
 
     class Meta:
         model = User
@@ -19,16 +20,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
 
-        # Ngăn người dùng tự đăng ký với vai trò ADMIN
-        if attrs.get('role') == 'ADMIN':
-            raise serializers.ValidationError({"role": "Cannot register with Administrator role. Please contact system administrator."})
+        # Luôn đặt vai trò là PATIENT cho người dùng tự đăng ký
+        attrs['role'] = 'PATIENT'
 
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
-        # Không cần đặt username nữa vì đã loại bỏ trường này
+        # Tạo người dùng với vai trò PATIENT
         user = User.objects.create_user(**validated_data)
+
+        # Tự động tạo hồ sơ bệnh nhân cơ bản
+        # Các trường date_of_birth và gender có thể để trống và cập nhật sau
+        from users.models import PatientProfile
+        PatientProfile.objects.create(user=user)
+
         return user
 
 class UserLoginSerializer(serializers.Serializer):

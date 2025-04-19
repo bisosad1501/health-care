@@ -51,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'records.middleware.ServiceAPIKeyMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -148,6 +149,13 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # API Gateway URL
 API_GATEWAY_URL = os.environ.get('API_GATEWAY_URL', 'http://api-gateway:4000')
+
+# Service API Keys
+SERVICE_API_KEYS = {
+    'pharmacy-service': os.environ.get('PHARMACY_SERVICE_API_KEY', 'pharmacy-service-api-key'),
+    'appointment-service': os.environ.get('APPOINTMENT_SERVICE_API_KEY', 'appointment-service-api-key'),
+    'user-service': os.environ.get('USER_SERVICE_API_KEY', 'user-service-api-key'),
+}
 
 # Common Auth settings
 JWT_SECRET = os.environ.get('JWT_SECRET', SECRET_KEY)

@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
@@ -16,7 +16,8 @@ from .serializers import (
     PrescriptionCreateSerializer, DispensingCreateSerializer
 )
 from .authentication import CustomJWTAuthentication
-from .permissions import IsPharmacist, IsDoctor, IsPatient, IsAdmin
+from .permissions import IsPharmacist, IsDoctor, IsPatient, IsAdmin, HasAnyRole
+from .services import MedicalRecordService
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +69,88 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     queryset = Prescription.objects.all()
     serializer_class = PrescriptionSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [IsPharmacist | IsDoctor | IsPatient]
+    permission_classes = [IsDoctor | IsAdmin | IsPharmacist]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['patient_id', 'doctor_id', 'status']
+    filterset_fields = ['patient_id', 'doctor_id', 'diagnosis_id', 'encounter_id', 'status']
     ordering_fields = ['date_prescribed', 'created_at', 'status']
+
+    @action(detail=False, methods=['post'], permission_classes=[IsDoctor | IsAdmin])
+    def create_from_diagnosis(self, request):
+        """
+        Create a prescription from a diagnosis.
+        """
+        diagnosis_id = request.data.get('diagnosis_id')
+        if not diagnosis_id:
+            return Response({"error": "diagnosis_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lấy token xác thực từ request
+        auth_header = request.META.get('HTTP_AUTHORIZATION')
+        auth_token = None
+        if auth_header and auth_header.startswith('Bearer '):
+            auth_token = auth_header.split(' ')[1]
+
+        # Get diagnosis information
+        diagnosis_info = MedicalRecordService.get_diagnosis_info(diagnosis_id, auth_token)
+        if not diagnosis_info:
+            return Response({"error": "Diagnosis not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Extract information from diagnosis
+        encounter_id = diagnosis_info.get('encounter')
+        if not isinstance(encounter_id, dict):
+            # Lấy thông tin encounter
+            encounter_info = MedicalRecordService.get_encounter_info(encounter_id, auth_token)
+            if not encounter_info:
+                return Response({"error": "Encounter not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            medical_record_id = encounter_info.get('medical_record')
+            if not isinstance(medical_record_id, dict):
+                # Lấy thông tin medical record
+                medical_record_info = MedicalRecordService.get_medical_record_info(medical_record_id, auth_token)
+                if not medical_record_info:
+                    return Response({"error": "Medical record not found"}, status=status.HTTP_404_NOT_FOUND)
+
+                patient_id = medical_record_info.get('patient_id')
+            else:
+                patient_id = encounter_info.get('medical_record', {}).get('patient_id')
+        else:
+            patient_id = diagnosis_info.get('encounter', {}).get('medical_record', {}).get('patient_id')
+            encounter_id = diagnosis_info.get('encounter', {}).get('id')
+
+        doctor_id = diagnosis_info.get('doctor_id')
+
+        if not patient_id or not doctor_id:
+            return Response({"error": "Invalid diagnosis data"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lấy thông tin chi tiết về chẩn đoán
+        diagnosis_code = diagnosis_info.get('diagnosis_code')
+        diagnosis_description = diagnosis_info.get('diagnosis_description')
+
+        print(f"Diagnosis info: {diagnosis_info}")
+
+        # Create prescription data
+        prescription_data = {
+            'patient_id': patient_id,
+            'doctor_id': doctor_id,
+            'diagnosis_id': diagnosis_id,
+            'encounter_id': encounter_id,
+            'diagnosis_code': diagnosis_code,
+            'diagnosis_description': diagnosis_description,
+            'date_prescribed': timezone.now().date(),
+            'status': 'PENDING',
+            'notes': request.data.get('notes', f"Created from diagnosis #{diagnosis_id}"),
+            'items': request.data.get('items', [])
+        }
+
+        serializer = PrescriptionCreateSerializer(data=prescription_data)
+        if serializer.is_valid():
+            prescription = serializer.save()
+
+            # Cập nhật chẩn đoán trong medical-record-service
+            MedicalRecordService.update_diagnosis_prescriptions(diagnosis_id, prescription.id, auth_token)
+
+            return Response(PrescriptionSerializer(prescription).data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -159,7 +238,7 @@ class PrescriptionItemViewSet(viewsets.ModelViewSet):
     queryset = PrescriptionItem.objects.all()
     serializer_class = PrescriptionItemSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [IsPharmacist | IsDoctor]
+    permission_classes = [HasAnyRole]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['prescription', 'medication']
 
@@ -187,7 +266,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
     queryset = Inventory.objects.all()
     serializer_class = InventorySerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [IsPharmacist]
+    permission_classes = [IsPharmacist | IsAdmin]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['medication', 'batch_number']
     ordering_fields = ['expiry_date', 'quantity', 'created_at']
@@ -236,7 +315,7 @@ class DispensingViewSet(viewsets.ModelViewSet):
     queryset = Dispensing.objects.all()
     serializer_class = DispensingSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [IsPharmacist]
+    permission_classes = [IsPharmacist | IsAdmin]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['prescription', 'pharmacist_id', 'status']
     ordering_fields = ['date_dispensed', 'created_at', 'status']
@@ -295,6 +374,40 @@ class DispensingViewSet(viewsets.ModelViewSet):
         # Update dispensing status
         dispensing.status = 'COMPLETED'
         dispensing.save()
+
+        # Create invoice for the completed dispensing
+        try:
+            from .integrations import create_invoice_from_prescription, send_notification
+
+            # Get token from request
+            auth_header = request.META.get('HTTP_AUTHORIZATION')
+
+            # Create invoice
+            invoice = create_invoice_from_prescription(
+                prescription=dispensing.prescription,
+                dispensing=dispensing,
+                token=auth_header
+            )
+
+            if invoice:
+                logger.info(f"Created invoice for dispensing {dispensing.id}: {invoice.get('id')}")
+
+                # Send notification about invoice to patient
+                send_notification(
+                    user_id=dispensing.prescription.patient_id,
+                    notification_type="INVOICE_CREATED",
+                    message=f"An invoice has been created for your prescription.",
+                    additional_data={
+                        "invoice_id": invoice.get('id'),
+                        "prescription_id": dispensing.prescription.id,
+                        "dispensing_id": dispensing.id,
+                        "amount": invoice.get('total_amount')
+                    },
+                    token=auth_header
+                )
+        except Exception as e:
+            logger.error(f"Error creating invoice for dispensing {dispensing.id}: {str(e)}")
+            # Don't raise the exception to avoid affecting the main flow
 
         serializer = self.get_serializer(dispensing)
         return Response(serializer.data)

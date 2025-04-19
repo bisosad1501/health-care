@@ -3,6 +3,9 @@ from .views import (
     # User APIs
     UserListAPI, UserDetailAPI, CurrentUserAPI,
 
+    # Insurance APIs
+    list_insurance_information,
+
     # Document APIs
     UserDocumentListAPI, UserDocumentDetailAPI, VerifyDocumentAPI,
 
@@ -27,7 +30,19 @@ from .views import (
 
     # Admin List APIs
     list_all_patient_profiles, list_all_doctor_profiles, list_all_nurse_profiles,
-    list_all_pharmacist_profiles, list_all_insurance_provider_profiles, list_all_lab_technician_profiles
+    list_all_pharmacist_profiles, list_all_insurance_provider_profiles, list_all_lab_technician_profiles,
+
+    # Admin User Management APIs
+    create_staff_user,
+
+    # Doctors API
+    list_doctors,
+
+    # Specialties API
+    specialties,
+
+    # Departments API
+    departments
 )
 
 urlpatterns = [
@@ -74,4 +89,19 @@ urlpatterns = [
     path('admin/pharmacist-profiles/', list_all_pharmacist_profiles, name='all-pharmacist-profiles'),
     path('admin/insurance-provider-profiles/', list_all_insurance_provider_profiles, name='all-insurance-provider-profiles'),
     path('admin/lab-technician-profiles/', list_all_lab_technician_profiles, name='all-lab-technician-profiles'),
+
+    # Admin User Management APIs
+    path('admin/create-staff/', create_staff_user, name='admin-create-staff'),
+
+    # Doctors API
+    path('doctors/', list_doctors, name='doctors-list'),
+
+    # Specialties API
+    path('specialties/', specialties, name='specialties'),
+
+    # Departments API
+    path('departments/', departments, name='departments'),
+
+    # Insurance Information API
+    path('insurance-information/', list_insurance_information, name='insurance-information'),
 ]

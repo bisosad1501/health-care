@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Notification, NotificationTemplate, NotificationSchedule
+from .models import Notification, NotificationTemplate, NotificationSchedule, InAppNotification
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -21,6 +21,21 @@ class NotificationScheduleSerializer(serializers.ModelSerializer):
         model = NotificationSchedule
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at', 'status']
+
+
+class InAppNotificationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the InAppNotification model, used for API responses.
+    """
+    class Meta:
+        model = InAppNotification
+        fields = [
+            'id', 'recipient_id', 'recipient_type', 'notification_type',
+            'title', 'content', 'status', 'reference_id', 'reference_type',
+            'is_urgent', 'read_at', 'service', 'event_type', 'metadata',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class SendEmailNotificationSerializer(serializers.Serializer):
@@ -84,8 +99,10 @@ class AppointmentEventSerializer(serializers.Serializer):
     appointment_id = serializers.IntegerField()
     patient_id = serializers.IntegerField()
     doctor_id = serializers.IntegerField()
-    appointment_date = serializers.DateTimeField()
-    appointment_type = serializers.CharField(max_length=50)
+    appointment_date = serializers.CharField()
+    appointment_time = serializers.CharField(required=False, allow_blank=True)
+    status = serializers.CharField(required=False, allow_blank=True)
+    appointment_type = serializers.CharField(max_length=50, required=False, allow_blank=True, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 

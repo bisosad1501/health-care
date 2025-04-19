@@ -2,12 +2,13 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.utils import timezone
-from .models import Notification, NotificationTemplate, NotificationSchedule
+from .models import Notification, NotificationTemplate, NotificationSchedule, InAppNotification
 from .serializers import (
     NotificationSerializer, NotificationTemplateSerializer, NotificationScheduleSerializer,
     SendEmailNotificationSerializer, SendSMSNotificationSerializer, ScheduleNotificationSerializer,
-    EventSerializer
+    EventSerializer, InAppNotificationSerializer
 )
 from .tasks import send_email_notification, send_sms_notification, send_notification_from_template
 from .authentication import HeaderAuthentication
@@ -27,7 +28,8 @@ class NotificationViewSet(viewsets.ModelViewSet):
     """
     queryset = Notification.objects.all().order_by('-created_at')
     serializer_class = NotificationSerializer
-    authentication_classes = [HeaderAuthentication]
+    # Support both service tokens and user JWTs for unified auth
+    authentication_classes = [HeaderAuthentication, JWTAuthentication]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['recipient_id', 'recipient_email', 'recipient_phone', 'subject', 'content']
     ordering_fields = ['created_at', 'sent_at', 'delivered_at']
@@ -40,12 +42,19 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
+        # Base queryset
         queryset = Notification.objects.all().order_by('-created_at')
-
-        # Filter by recipient_id if provided
-        recipient_id = self.request.query_params.get('recipient_id', None)
-        if recipient_id:
-            queryset = queryset.filter(recipient_id=recipient_id)
+        user = self.request.user
+        user_role = getattr(user, 'role', None)
+        user_id = getattr(user, 'id', None)
+        # Admins and staff can view any or filter by recipient
+        if user.is_staff or user_role in ['ADMIN', 'STAFF']:
+            recipient_id = self.request.query_params.get('recipient_id', None)
+            if recipient_id:
+                queryset = queryset.filter(recipient_id=recipient_id)
+        else:
+            # Regular users only see their own notifications
+            queryset = queryset.filter(recipient_id=user_id)
 
         # Filter by notification_type if provided
         notification_type = self.request.query_params.get('notification_type', None)
@@ -300,13 +309,213 @@ class NotificationScheduleViewSet(viewsets.ModelViewSet):
         )
 
 
+class InAppNotificationViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing in-app notifications.
+    """
+    queryset = InAppNotification.objects.all().order_by('-created_at')
+    serializer_class = InAppNotificationSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['content', 'title']
+    ordering_fields = ['created_at', 'status']
+
+    def get_queryset(self):
+        """
+        Filter notifications based on the current user.
+        """
+        user = self.request.user
+        user_id = getattr(user, 'id', None)
+        user_role = getattr(user, 'role', None)
+
+        # Base queryset - filtered by recipient
+        queryset = InAppNotification.objects.all().order_by('-created_at')
+        
+        # Admins can see all notifications or filter by recipient
+        if user.is_staff or user_role == 'ADMIN':
+            recipient_id = self.request.query_params.get('recipient_id', None)
+            if recipient_id:
+                queryset = queryset.filter(recipient_id=recipient_id)
+        else:
+            # Regular users only see their own notifications
+            queryset = queryset.filter(recipient_id=user_id)
+
+        # Apply additional filters
+        status_param = self.request.query_params.get('status', None)
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+            
+        # Filter by notification type
+        notification_type = self.request.query_params.get('notification_type', None)
+        if notification_type:
+            queryset = queryset.filter(notification_type=notification_type)
+            
+        # Filter by service
+        service = self.request.query_params.get('service', None)
+        if service:
+            queryset = queryset.filter(service=service)
+            
+        # Filter by reference_id
+        reference_id = self.request.query_params.get('reference_id', None)
+        if reference_id:
+            queryset = queryset.filter(reference_id=reference_id)
+            
+        # Filter by reference_type
+        reference_type = self.request.query_params.get('reference_type', None)
+        if reference_type:
+            queryset = queryset.filter(reference_type=reference_type)
+            
+        # Filter by urgency
+        is_urgent = self.request.query_params.get('is_urgent', None)
+        if is_urgent is not None:
+            is_urgent = is_urgent.lower() == 'true'
+            queryset = queryset.filter(is_urgent=is_urgent)
+            
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def mark_as_read(self, request, pk=None):
+        """
+        Mark a notification as read.
+        """
+        notification = self.get_object()
+        
+        # Check if user has permission to mark this notification as read
+        user_id = getattr(request.user, 'id', None)
+        if notification.recipient_id != user_id and not request.user.is_staff:
+            return Response(
+                {'error': 'You do not have permission to mark this notification as read'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        # Mark as read
+        notification.status = InAppNotification.Status.READ
+        notification.read_at = timezone.now()
+        notification.save(update_fields=['status', 'read_at', 'updated_at'])
+        
+        return Response(
+            InAppNotificationSerializer(notification).data,
+            status=status.HTTP_200_OK
+        )
+        
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """
+        Archive a notification.
+        """
+        notification = self.get_object()
+        
+        # Check if user has permission to archive this notification
+        user_id = getattr(request.user, 'id', None)
+        if notification.recipient_id != user_id and not request.user.is_staff:
+            return Response(
+                {'error': 'You do not have permission to archive this notification'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        # Archive notification
+        notification.status = InAppNotification.Status.ARCHIVED
+        notification.save(update_fields=['status', 'updated_at'])
+        
+        return Response(
+            InAppNotificationSerializer(notification).data,
+            status=status.HTTP_200_OK
+        )
+        
+    @action(detail=False, methods=['post'])
+    def mark_all_as_read(self, request):
+        """
+        Mark all notifications for the current user as read.
+        """
+        user_id = getattr(request.user, 'id', None)
+        recipient_id = request.data.get('recipient_id', user_id)
+        
+        # Only staff can mark notifications as read for other users
+        if recipient_id != user_id and not request.user.is_staff:
+            return Response(
+                {'error': 'You do not have permission to mark notifications as read for other users'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        # Get all unread notifications for the user
+        notifications = InAppNotification.objects.filter(
+            recipient_id=recipient_id,
+            status=InAppNotification.Status.UNREAD
+        )
+        
+        # Mark all as read
+        now = timezone.now()
+        count = notifications.update(
+            status=InAppNotification.Status.READ,
+            read_at=now,
+            updated_at=now
+        )
+        
+        return Response({'count': count, 'message': f'{count} notifications marked as read'})
+        
+    @action(detail=False, methods=['get'])
+    def count_unread(self, request):
+        """
+        Get the count of unread notifications for the current user.
+        """
+        user_id = getattr(request.user, 'id', None)
+        recipient_id = request.query_params.get('recipient_id', user_id)
+        
+        # Only staff can get counts for other users
+        if recipient_id != user_id and not request.user.is_staff:
+            return Response(
+                {'error': 'You do not have permission to view notification counts for other users'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        # Count unread notifications
+        count = InAppNotification.objects.filter(
+            recipient_id=recipient_id,
+            status=InAppNotification.Status.UNREAD
+        ).count()
+        
+        # Count urgent unread notifications
+        urgent_count = InAppNotification.objects.filter(
+            recipient_id=recipient_id,
+            status=InAppNotification.Status.UNREAD,
+            is_urgent=True
+        ).count()
+        
+        return Response({
+            'total_unread': count,
+            'urgent_unread': urgent_count
+        })
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def process_event(request):
     """
     Process events from other services and create appropriate notifications.
     """
-    serializer = EventSerializer(data=request.data)
+    # Log the incoming request data for debugging
+    logger.info(f"Received event data: {request.data}")
+
+    # Extract service and event_type from request data
+    service = request.data.get('service')
+    event_type = request.data.get('event_type')
+
+    # Prepare event_data from request data
+    event_data = {}
+    for key, value in request.data.items():
+        if key not in ['service']:
+            event_data[key] = value
+
+    # Create data for EventSerializer
+    serializer_data = {
+        'service': service,
+        'event_data': event_data
+    }
+
+    logger.info(f"Prepared serializer data: {serializer_data}")
+
+    serializer = EventSerializer(data=serializer_data)
     if serializer.is_valid():
         service = serializer.validated_data['service']
         event_data = serializer.validated_data['event_data']
@@ -330,5 +539,6 @@ def process_event(request):
         except Exception as e:
             logger.error(f"Error processing {service} event: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        logger.error(f"Validation errors: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

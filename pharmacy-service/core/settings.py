@@ -149,6 +149,10 @@ API_GATEWAY_URL = os.environ.get('API_GATEWAY_URL', 'http://api-gateway:4000')
 USER_SERVICE_URL = os.environ.get('USER_SERVICE_URL', 'http://user-service:8000')
 MEDICAL_RECORD_SERVICE_URL = os.environ.get('MEDICAL_RECORD_SERVICE_URL', 'http://medical-record-service:8001')
 
+# Service API Keys
+SERVICE_API_KEY = os.environ.get('PHARMACY_SERVICE_API_KEY', 'pharmacy-service-api-key')
+SERVICE_NAME = 'pharmacy-service'
+
 # Common Auth settings
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
 JWT_SECRET = os.environ.get('JWT_SECRET', SECRET_KEY)

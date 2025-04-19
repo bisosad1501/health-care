@@ -119,8 +119,8 @@ class PatientProfile(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient_profile')
-    date_of_birth = models.DateField()
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True, blank=True)
     blood_type = models.CharField(max_length=3, choices=BLOOD_TYPE_CHOICES, blank=True, null=True)
     height = models.DecimalField(max_digits=5, decimal_places=2, help_text="Height in cm", null=True, blank=True)
     weight = models.DecimalField(max_digits=5, decimal_places=2, help_text="Weight in kg", null=True, blank=True)
@@ -144,6 +144,8 @@ class PatientProfile(models.Model):
 
     def get_age(self):
         """Tính tuổi của bệnh nhân"""
+        if not self.date_of_birth:
+            return None
         today = timezone.now().date()
         return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
 
@@ -162,23 +164,43 @@ class PatientProfile(models.Model):
 class DoctorProfile(models.Model):
     """Hồ sơ bác sĩ"""
     SPECIALIZATION_CHOICES = [
-        ('CARDIOLOGY', 'Cardiology'),
-        ('DERMATOLOGY', 'Dermatology'),
-        ('ENDOCRINOLOGY', 'Endocrinology'),
-        ('GASTROENTEROLOGY', 'Gastroenterology'),
-        ('GENERAL_PRACTICE', 'General Practice'),
-        ('HEMATOLOGY', 'Hematology'),
-        ('NEUROLOGY', 'Neurology'),
-        ('OBSTETRICS', 'Obstetrics'),
-        ('ONCOLOGY', 'Oncology'),
-        ('OPHTHALMOLOGY', 'Ophthalmology'),
-        ('ORTHOPEDICS', 'Orthopedics'),
-        ('PEDIATRICS', 'Pediatrics'),
-        ('PSYCHIATRY', 'Psychiatry'),
-        ('RADIOLOGY', 'Radiology'),
-        ('SURGERY', 'Surgery'),
-        ('UROLOGY', 'Urology'),
-        ('OTHER', 'Other'),
+        # Chuyên khoa thuộc Khoa Nội
+        ('NOI_TIM_MACH', 'Chuyên khoa Tim mạch'),
+        ('NOI_TIEU_HOA', 'Chuyên khoa Tiêu hóa'),
+        ('NOI_HO_HAP', 'Chuyên khoa Hô hấp'),
+        ('NOI_THAN', 'Chuyên khoa Thận - Tiết niệu'),
+        ('NOI_TIET', 'Chuyên khoa Nội tiết'),
+        ('NOI_THAN_KINH', 'Chuyên khoa Thần kinh'),
+        ('NOI_DA_LIEU', 'Chuyên khoa Da liễu'),
+        ('NOI_TONG_QUAT', 'Chuyên khoa Nội tổng quát'),
+
+        # Chuyên khoa thuộc Khoa Ngoại
+        ('NGOAI_CHINH_HINH', 'Chuyên khoa Chấn thương chỉnh hình'),
+        ('NGOAI_TIET_NIEU', 'Chuyên khoa Tiết niệu'),
+        ('NGOAI_THAN_KINH', 'Chuyên khoa Thần kinh'),
+        ('NGOAI_LONG_NGUC', 'Chuyên khoa Lồng ngực - Mạch máu'),
+        ('NGOAI_TIEU_HOA', 'Chuyên khoa Tiêu hóa'),
+        ('NGOAI_TONG_QUAT', 'Chuyên khoa Ngoại tổng quát'),
+
+        # Chuyên khoa thuộc Khoa Sản - Phụ khoa
+        ('SAN_KHOA', 'Chuyên khoa Sản'),
+        ('PHU_KHOA', 'Chuyên khoa Phụ khoa'),
+        ('VO_SINH', 'Chuyên khoa Vô sinh - Hiếm muộn'),
+
+        # Chuyên khoa thuộc Khoa Nhi
+        ('NHI_TONG_QUAT', 'Chuyên khoa Nhi Tổng quát'),
+        ('NHI_TIM_MACH', 'Chuyên khoa Nhi Tim mạch'),
+        ('NHI_THAN_KINH', 'Chuyên khoa Nhi Thần kinh'),
+        ('NHI_SO_SINH', 'Chuyên khoa Sơ sinh'),
+
+        # Các chuyên khoa khác
+        ('MAT', 'Chuyên khoa Mắt'),
+        ('TAI_MUI_HONG', 'Chuyên khoa Tai Mũi Họng'),
+        ('RANG_HAM_MAT', 'Chuyên khoa Răng Hàm Mặt'),
+        ('TAM_THAN', 'Chuyên khoa Tâm thần'),
+        ('UNG_BUOU', 'Chuyên khoa Ung bướu'),
+        ('DA_KHOA', 'Đa khoa'),
+        ('KHAC', 'Chuyên khoa khác'),
     ]
 
     AVAILABILITY_STATUS_CHOICES = [
@@ -188,26 +210,46 @@ class DoctorProfile(models.Model):
         ('EMERGENCY_ONLY', 'Emergency Only'),
     ]
 
+    WORKING_DAYS_CHOICES = [
+        ('MON', 'Monday'),
+        ('TUE', 'Tuesday'),
+        ('WED', 'Wednesday'),
+        ('THU', 'Thursday'),
+        ('FRI', 'Friday'),
+        ('SAT', 'Saturday'),
+        ('SUN', 'Sunday'),
+    ]
+
+    # Thông tin cơ bản (bắt buộc)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor_profile')
     specialization = models.CharField(max_length=100, choices=SPECIALIZATION_CHOICES)
-    secondary_specialization = models.CharField(max_length=100, choices=SPECIALIZATION_CHOICES, blank=True, null=True)
     license_number = models.CharField(max_length=50, unique=True)
-    license_expiry_date = models.DateField(null=True, blank=True)
     years_of_experience = models.PositiveIntegerField()
-    education = models.TextField()
-    board_certifications = models.TextField(blank=True, null=True)
-    hospital_affiliations = models.TextField(blank=True, null=True)
-    research_publications = models.TextField(blank=True, null=True)
-    biography = models.TextField(blank=True, null=True)
+
+    # Thông tin làm việc (bắt buộc)
+    department = models.CharField(max_length=100, default="General")
     consultation_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     availability_status = models.CharField(max_length=20, choices=AVAILABILITY_STATUS_CHOICES, default='AVAILABLE')
-    availability_notes = models.TextField(blank=True, null=True)
     max_patients_per_day = models.PositiveIntegerField(default=20)
-    accepts_new_patients = models.BooleanField(default=True)
-    languages_spoken = models.CharField(max_length=200, default='English')
+
+    # Thông tin lịch làm việc (bắt buộc)
+    working_days = models.CharField(max_length=100, default="MON,TUE,WED,THU,FRI", help_text="Comma separated days, e.g., 'MON,TUE,WED,THU,FRI'")
+    working_hours = models.CharField(max_length=100, default="08:00-17:00", help_text="Format: '09:00-17:00'")
+
+    # Thông tin bổ sung (không bắt buộc)
+    secondary_specialization = models.CharField(max_length=100, choices=SPECIALIZATION_CHOICES, blank=True, null=True)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    education = models.CharField(max_length=255, blank=True, null=True)
+    board_certifications = models.TextField(blank=True, null=True)
+    short_bio = models.CharField(max_length=500, blank=True, null=True)
+    languages_spoken = models.CharField(max_length=200, default='Tiếng Việt')
     profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+
+    # Thông tin đánh giá (tự động)
     average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     rating_count = models.PositiveIntegerField(default=0)
+
+    # Thời gian
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -231,17 +273,19 @@ class DoctorProfile(models.Model):
 class NurseProfile(models.Model):
     """Hồ sơ y tá"""
     DEPARTMENT_CHOICES = [
-        ('EMERGENCY', 'Emergency'),
-        ('ICU', 'Intensive Care Unit'),
-        ('PEDIATRICS', 'Pediatrics'),
-        ('CARDIOLOGY', 'Cardiology'),
-        ('ONCOLOGY', 'Oncology'),
-        ('NEUROLOGY', 'Neurology'),
-        ('ORTHOPEDICS', 'Orthopedics'),
-        ('GENERAL', 'General'),
-        ('SURGERY', 'Surgery'),
-        ('OBSTETRICS', 'Obstetrics'),
-        ('OTHER', 'Other'),
+        ('KHOA_NOI', 'Khoa Nội'),
+        ('KHOA_NGOAI', 'Khoa Ngoại'),
+        ('KHOA_SAN', 'Khoa Sản - Phụ khoa'),
+        ('KHOA_NHI', 'Khoa Nhi'),
+        ('KHOA_CAP_CUU', 'Khoa Cấp cứu'),
+        ('KHOA_XET_NGHIEM', 'Khoa Xét nghiệm'),
+        ('KHOA_CHAN_DOAN_HINH_ANH', 'Khoa Chẩn đoán hình ảnh'),
+        ('KHOA_MAT', 'Khoa Mắt'),
+        ('KHOA_TMH', 'Khoa Tai Mũi Họng'),
+        ('KHOA_RHM', 'Khoa Răng Hàm Mặt'),
+        ('KHOA_UNG_BUOU', 'Khoa Ung bướu'),
+        ('KHOA_HOI_SUC', 'Khoa Hồi sức tích cực (ICU)'),
+        ('KHOA_KHAC', 'Khoa khác'),
     ]
 
     NURSE_TYPE_CHOICES = [
@@ -260,19 +304,26 @@ class NurseProfile(models.Model):
         ('ROTATING', 'Rotating Shift'),
     ]
 
+    # Thông tin cơ bản (bắt buộc)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='nurse_profile')
     license_number = models.CharField(max_length=50, unique=True)
-    license_expiry_date = models.DateField(null=True, blank=True)
     nurse_type = models.CharField(max_length=20, choices=NURSE_TYPE_CHOICES, default='RN')
+
+    # Thông tin làm việc (bắt buộc)
     department = models.CharField(max_length=100, choices=DEPARTMENT_CHOICES)
-    specialization = models.CharField(max_length=100, blank=True, null=True)
-    years_of_experience = models.PositiveIntegerField(default=0)
-    education = models.TextField(blank=True, null=True)
-    certifications = models.TextField(blank=True, null=True)
     shift_preference = models.CharField(max_length=20, choices=SHIFT_CHOICES, default='ROTATING')
-    languages_spoken = models.CharField(max_length=200, default='English')
+    years_of_experience = models.PositiveIntegerField(default=0)
+
+    # Thông tin bổ sung (không bắt buộc)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    specialization = models.CharField(max_length=100, blank=True, null=True)
+    education = models.CharField(max_length=255, blank=True, null=True)
+    certifications = models.CharField(max_length=255, blank=True, null=True)
+    languages_spoken = models.CharField(max_length=200, default='Tiếng Việt')
     supervisor = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='supervised_nurses')
     profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+
+    # Thời gian
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -298,18 +349,25 @@ class PharmacistProfile(models.Model):
         ('OTHER', 'Other'),
     ]
 
+    # Thông tin cơ bản (bắt buộc)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='pharmacist_profile')
     license_number = models.CharField(max_length=50, unique=True)
-    license_expiry_date = models.DateField(null=True, blank=True)
     specialization = models.CharField(max_length=50, choices=SPECIALIZATION_CHOICES, default='RETAIL')
-    years_of_experience = models.PositiveIntegerField(default=0)
-    education = models.TextField()
-    certifications = models.TextField(blank=True, null=True)
-    pharmacy_name = models.CharField(max_length=200, blank=True, null=True)
+
+    # Thông tin làm việc (bắt buộc)
+    pharmacy_name = models.CharField(max_length=200, default="General Pharmacy")
     pharmacy_address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='pharmacies')
+    years_of_experience = models.PositiveIntegerField(default=0)
     is_pharmacy_manager = models.BooleanField(default=False)
-    languages_spoken = models.CharField(max_length=200, default='English')
+
+    # Thông tin bổ sung (không bắt buộc)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    education = models.CharField(max_length=255, blank=True, null=True)
+    certifications = models.CharField(max_length=255, blank=True, null=True)
+    languages_spoken = models.CharField(max_length=200, default='Tiếng Việt')
     profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+
+    # Thời gian
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -344,6 +402,7 @@ class InsuranceInformation(models.Model):
     insurance_type = models.CharField(max_length=20, choices=INSURANCE_TYPE_CHOICES, default='HEALTH')
     policy_number = models.CharField(max_length=100)
     group_number = models.CharField(max_length=100, blank=True, null=True)
+    member_id = models.CharField(max_length=100, blank=True, null=True)
     subscriber_name = models.CharField(max_length=200)
     subscriber_relationship = models.CharField(max_length=50, default='SELF')
     coverage_start_date = models.DateField()
@@ -368,17 +427,26 @@ class InsuranceInformation(models.Model):
 
 class InsuranceProviderProfile(models.Model):
     """Hồ sơ nhà cung cấp bảo hiểm"""
+    # Thông tin cơ bản (bắt buộc)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='insurance_provider_profile')
     company_name = models.CharField(max_length=200)
     provider_id = models.CharField(max_length=100, unique=True)
+
+    # Thông tin liên hệ (bắt buộc)
     contact_person = models.CharField(max_length=200)
     contact_email = models.EmailField()
     contact_phone = models.CharField(max_length=20)
     address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='insurance_providers')
+
+    # Thông tin dịch vụ (bắt buộc)
+    service_areas = models.CharField(max_length=500, default="All Areas", help_text="Comma-separated list of service areas")
+    available_plans = models.CharField(max_length=500, default="Basic, Standard, Premium", help_text="Description of available insurance plans")
+
+    # Thông tin bổ sung (không bắt buộc)
     website = models.URLField(blank=True, null=True)
     established_year = models.PositiveIntegerField(null=True, blank=True)
-    service_areas = models.TextField(help_text="Comma-separated list of service areas")
-    available_plans = models.TextField(help_text="Description of available insurance plans")
+
+    # Thời gian
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -403,18 +471,25 @@ class LabTechnicianProfile(models.Model):
         ('OTHER', 'Other'),
     ]
 
+    # Thông tin cơ bản (bắt buộc)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='lab_technician_profile')
     license_number = models.CharField(max_length=50, unique=True)
-    license_expiry_date = models.DateField(null=True, blank=True)
     specialization = models.CharField(max_length=50, choices=SPECIALIZATION_CHOICES, default='GENERAL')
-    years_of_experience = models.PositiveIntegerField(default=0)
-    education = models.TextField()
-    certifications = models.TextField(blank=True, null=True)
+
+    # Thông tin làm việc (bắt buộc)
     laboratory_name = models.CharField(max_length=200)
     laboratory_address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='laboratories')
+    years_of_experience = models.PositiveIntegerField(default=0)
+
+    # Thông tin bổ sung (không bắt buộc)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    education = models.CharField(max_length=255, blank=True, null=True)
+    certifications = models.CharField(max_length=255, blank=True, null=True)
     supervisor = models.CharField(max_length=200, blank=True, null=True)
-    equipment_expertise = models.TextField(blank=True, null=True, help_text="List of laboratory equipment the technician is proficient with")
+    equipment_expertise = models.CharField(max_length=500, blank=True, null=True, help_text="List of laboratory equipment the technician is proficient with")
     profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+
+    # Thời gian
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -437,15 +512,30 @@ class AdminProfile(models.Model):
         ('OTHER', 'Other'),
     ]
 
+    ACCESS_LEVEL_CHOICES = [
+        (1, 'Level 1 - Basic Access'),
+        (2, 'Level 2 - Standard Access'),
+        (3, 'Level 3 - Enhanced Access'),
+        (4, 'Level 4 - Advanced Access'),
+        (5, 'Level 5 - Full Access'),
+    ]
+
+    # Thông tin cơ bản (bắt buộc)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
     admin_type = models.CharField(max_length=20, choices=ADMIN_TYPE_CHOICES, default='HOSPITAL')
-    department = models.CharField(max_length=100, blank=True, null=True)
-    position = models.CharField(max_length=100)
     employee_id = models.CharField(max_length=50, unique=True)
-    access_level = models.PositiveIntegerField(default=1, help_text="1-5, with 5 being highest access")
-    responsibilities = models.TextField(blank=True, null=True)
+
+    # Thông tin quyền hạn (bắt buộc)
+    position = models.CharField(max_length=100)
+    access_level = models.PositiveIntegerField(choices=ACCESS_LEVEL_CHOICES, default=1, help_text="1-5, with 5 being highest access")
+
+    # Thông tin bổ sung (không bắt buộc)
+    department = models.CharField(max_length=100, blank=True, null=True)
+    responsibilities = models.CharField(max_length=500, blank=True, null=True)
     supervisor = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='supervised_admins')
     profile_picture = models.CharField(max_length=255, blank=True, null=True, help_text="Path to profile picture in storage service")
+
+    # Thời gian
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

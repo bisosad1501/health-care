@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import PatientAppointments from "@/components/patient/patient-appointments"
 import { formatDate } from "@/lib/utils"
+import appointmentService from "@/lib/api/appointment-service"
 
 export default function PatientDashboardPage() {
   const router = useRouter()
@@ -44,40 +45,30 @@ export default function PatientDashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      // Giả lập API call để lấy dữ liệu dashboard
-      setTimeout(() => {
-        // Giả lập dữ liệu cuộc hẹn
-        const mockAppointments = [
-          {
-            id: 1,
-            doctor: {
-              first_name: "Trần",
-              last_name: "Thị B",
-              specialty: "Thần kinh",
-            },
-            appointment_date: "2025-05-15",
-            start_time: "09:00",
-            end_time: "09:30",
-            reason: "Đau đầu, chóng mặt",
-            status: "CONFIRMED",
-            location: "Phòng khám chính",
-          },
-          {
-            id: 2,
-            doctor: {
-              first_name: "Nguyễn",
-              last_name: "Văn A",
-              specialty: "Tim mạch",
-            },
-            appointment_date: "2025-05-20",
-            start_time: "10:00",
-            end_time: "10:30",
-            reason: "Khám định kỳ",
-            status: "SCHEDULED",
-            location: "Phòng khám chính",
-          },
-        ]
-        setAppointments(mockAppointments)
+
+      // Lấy dữ liệu cuộc hẹn từ API
+      const appointmentsResponse = await appointmentService.getPatientAppointments()
+      console.log('Appointments data from API:', appointmentsResponse)
+
+      // Chuyển đổi dữ liệu từ API sang định dạng hiển thị
+      const formattedAppointments = appointmentsResponse.map(appointment => ({
+        id: appointment.id,
+        doctor: {
+          first_name: appointment.doctor_info?.first_name || '',
+          last_name: appointment.doctor_info?.last_name || '',
+          specialty: appointment.doctor_info?.specialty || '',
+          name: appointment.doctor_info?.name || ''
+        },
+        appointment_date: appointment.time_slot?.date || '',
+        start_time: appointment.time_slot?.start_time?.substring(0, 5) || '',
+        end_time: appointment.time_slot?.end_time?.substring(0, 5) || '',
+        reason: appointment.reason_text || '',
+        status: appointment.status || '',
+        location: appointment.time_slot?.location || 'Phòng khám chính',
+      }))
+
+      console.log('Formatted appointments:', formattedAppointments)
+      setAppointments(formattedAppointments)
 
         // Giả lập dữ liệu đơn thuốc
         const mockPrescriptions = [
@@ -141,15 +132,14 @@ export default function PatientDashboardPage() {
 
         // Cập nhật thống kê
         setStats({
-          upcomingAppointments: mockAppointments.filter((a) => a.status === "CONFIRMED" || a.status === "SCHEDULED")
+          upcomingAppointments: formattedAppointments.filter((a) => a.status === "CONFIRMED" || a.status === "SCHEDULED")
             .length,
           pendingPrescriptions: mockPrescriptions.filter((p) => p.status === "PENDING").length,
           pendingLabTests: mockLabTests.filter((l) => l.status === "PENDING").length,
-          completedVisits: 15, // Giả lập số lần khám đã hoàn thành
+          completedVisits: 15 // Giả lập số lần khám đã hoàn thành
         })
 
         setLoading(false)
-      }, 1000)
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
       setLoading(false)
@@ -194,10 +184,16 @@ export default function PatientDashboardPage() {
         title="Trang chủ"
         description="Xin chào, chào mừng bạn đến với hệ thống quản lý y tế"
         actions={
-          <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
-            <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
-            <span>Đặt lịch hẹn</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
+              <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+              <span>Đặt lịch hẹn</span>
+            </Button>
+            <Button onClick={() => router.push("/dashboard/patient/appointments/simple-booking")} variant="outline" className="group">
+              <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+              <span>Đặt lịch đơn giản</span>
+            </Button>
+          </div>
         }
       />
 
@@ -289,10 +285,16 @@ export default function PatientDashboardPage() {
                   )}
                 </CardContent>
                 <CardFooter className="flex justify-center border-t pt-4">
-                  <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
-                    <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
-                    <span>Đặt lịch hẹn mới</span>
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
+                      <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+                      <span>Đặt lịch hẹn</span>
+                    </Button>
+                    <Button onClick={() => router.push("/dashboard/patient/appointments/simple-booking")} variant="outline" className="group">
+                      <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+                      <span>Đặt lịch đơn giản</span>
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
             </motion.div>

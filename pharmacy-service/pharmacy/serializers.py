@@ -49,8 +49,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prescription
         fields = [
-            'id', 'patient_id', 'doctor_id', 'date_prescribed',
-            'status', 'status_display', 'notes', 'items',
+            'id', 'patient_id', 'doctor_id', 'diagnosis_id', 'encounter_id',
+            'date_prescribed', 'status', 'status_display', 'notes', 'items',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -60,13 +60,16 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating a Prescription with items.
     """
-    items = PrescriptionItemSerializer(many=True)
+    items = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True
+    )
 
     class Meta:
         model = Prescription
         fields = [
-            'id', 'patient_id', 'doctor_id', 'date_prescribed',
-            'status', 'notes', 'items'
+            'id', 'patient_id', 'doctor_id', 'diagnosis_id', 'encounter_id',
+            'date_prescribed', 'status', 'notes', 'items'
         ]
 
     def create(self, validated_data):
@@ -74,7 +77,63 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
         prescription = Prescription.objects.create(**validated_data)
 
         for item_data in items_data:
-            PrescriptionItem.objects.create(prescription=prescription, **item_data)
+            # Create or get medication
+            medication_id = item_data.pop('medication_id', None)
+            medication_name = item_data.pop('medication_name', None)
+
+            if medication_id:
+                try:
+                    medication = Medication.objects.get(id=medication_id)
+                except Medication.DoesNotExist:
+                    raise serializers.ValidationError({'medication_id': f'Medication with id {medication_id} does not exist.'})
+            elif medication_name:
+                # Try to find existing medication or create a simple one
+                try:
+                    medication = Medication.objects.get(name__iexact=medication_name)
+                except Medication.DoesNotExist:
+                    medication = Medication.objects.create(
+                        name=medication_name,
+                        dosage_form='TABLET',  # Default value
+                        strength='Standard',   # Default value
+                        manufacturer='Generic', # Default value
+                        category='OTHER',      # Default value
+                        requires_prescription=True
+                    )
+            else:
+                raise serializers.ValidationError({'medication': 'Either medication_id or medication_name is required.'})
+
+            # Set default quantity if not provided
+            if 'quantity' not in item_data:
+                # Extract quantity from duration if possible
+                duration = item_data.get('duration', '')
+                frequency = item_data.get('frequency', '')
+
+                # Simple parsing logic - can be improved
+                days = 0
+                if 'ngày' in duration:
+                    try:
+                        days = int(''.join(filter(str.isdigit, duration)))
+                    except ValueError:
+                        days = 5  # Default to 5 days if parsing fails
+                else:
+                    days = 5  # Default
+
+                times_per_day = 1
+                if 'lần/ngày' in frequency:
+                    try:
+                        times_per_day = int(''.join(filter(str.isdigit, frequency)))
+                    except ValueError:
+                        times_per_day = 3  # Default to 3 times per day if parsing fails
+
+                # Calculate quantity based on days and frequency
+                item_data['quantity'] = days * times_per_day
+
+            # Create prescription item
+            PrescriptionItem.objects.create(
+                prescription=prescription,
+                medication=medication,
+                **item_data
+            )
 
         return prescription
 

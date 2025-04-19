@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from common_auth import register_health_check
 from .views import (
     TestTypeViewSet, LabTestViewSet, TestResultViewSet,
     SampleCollectionViewSet, NotificationViewSet
@@ -15,3 +16,6 @@ router.register(r'notifications', NotificationViewSet)
 urlpatterns = [
     path('', include(router.urls)),
 ]
+
+# Register health check endpoint
+urlpatterns = register_health_check(urlpatterns)

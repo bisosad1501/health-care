@@ -1,8 +1,14 @@
+import requests
+import logging
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 from .models import Invoice, InvoiceItem, Payment, InsuranceClaim
 from .serializers import (
     InvoiceSerializer, InvoiceDetailSerializer, InvoiceCreateSerializer,
@@ -138,6 +144,87 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         serializer = InvoiceDetailSerializer(invoice)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'])
+    def process_payment(self, request, pk=None):
+        """
+        Process payment from a payment gateway.
+        """
+        invoice = self.get_object()
+
+        # Check if invoice is already paid
+        if invoice.status == Invoice.Status.PAID:
+            return Response(
+                {'error': 'Invoice is already paid'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get payment data
+        payment_method = request.data.get('payment_method')
+        amount = request.data.get('amount')
+        transaction_id = request.data.get('transaction_id')
+
+        # Validate payment data
+        if not payment_method or not amount:
+            return Response(
+                {'error': 'Payment method and amount are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create payment
+        payment_data = {
+            'payment_method': payment_method,
+            'amount': amount,
+            'transaction_id': transaction_id,
+            'payment_date': timezone.now(),
+            'status': Payment.Status.COMPLETED,
+            'notes': f'Payment processed via {payment_method}'
+        }
+
+        serializer = PaymentCreateSerializer(data=payment_data)
+
+        if serializer.is_valid():
+            payment = serializer.save(invoice=invoice)
+
+            # Update invoice status
+            from decimal import Decimal
+            total_paid = sum(p.amount for p in invoice.payments.all())
+
+            if total_paid >= invoice.final_amount:
+                invoice.status = Invoice.Status.PAID
+            elif total_paid > 0:
+                invoice.status = Invoice.Status.PARTIALLY_PAID
+
+            invoice.save()
+
+            # Send notification
+            try:
+                notification_data = {
+                    "service": "BILLING",
+                    "event_type": "PAYMENT_RECEIVED",
+                    "patient_id": invoice.patient_id,
+                    "invoice_id": invoice.id,
+                    "payment_id": payment.id,
+                    "amount": str(amount),
+                    "payment_method": payment_method,
+                    "invoice_status": invoice.status
+                }
+
+                # Send to notification service
+                requests.post(
+                    f"{settings.API_GATEWAY_URL}/api/events",
+                    json=notification_data,
+                    headers=request.headers,
+                    timeout=5
+                )
+            except Exception as e:
+                logger.error(f"Error sending payment notification: {str(e)}")
+
+            # Return updated invoice
+            serializer = InvoiceDetailSerializer(invoice)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class InvoiceItemViewSet(viewsets.ModelViewSet):
     """
@@ -268,6 +355,88 @@ class InsuranceClaimViewSet(viewsets.ModelViewSet):
 
         serializer = InsuranceClaimSerializer(claim)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def process_insurance_payment(self, request, pk=None):
+        """
+        Process payment from insurance provider.
+        """
+        claim = self.get_object()
+
+        # Check if claim is already processed
+        if claim.status not in [InsuranceClaim.Status.APPROVED, InsuranceClaim.Status.PARTIALLY_APPROVED]:
+            return Response(
+                {'error': 'Claim must be approved or partially approved to process payment'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get payment data
+        amount = request.data.get('amount')
+        transaction_id = request.data.get('transaction_id')
+        payment_reference = request.data.get('payment_reference')
+
+        # Validate payment data
+        if not amount:
+            return Response(
+                {'error': 'Amount is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create payment
+        payment_data = {
+            'payment_method': Payment.PaymentMethod.INSURANCE,
+            'amount': amount,
+            'transaction_id': transaction_id,
+            'payment_reference': payment_reference,
+            'payment_date': timezone.now(),
+            'status': Payment.Status.COMPLETED,
+            'payment_gateway': 'Insurance Provider',
+            'notes': f'Insurance payment for claim #{claim.claim_number}'
+        }
+
+        serializer = PaymentCreateSerializer(data=payment_data)
+
+        if serializer.is_valid():
+            payment = serializer.save(invoice=claim.invoice)
+
+            # Update invoice status
+            total_paid = sum(p.amount for p in claim.invoice.payments.all())
+
+            if total_paid >= claim.invoice.final_amount:
+                claim.invoice.status = Invoice.Status.PAID
+            elif total_paid > 0:
+                claim.invoice.status = Invoice.Status.PARTIALLY_PAID
+
+            claim.invoice.save()
+
+            # Send notification
+            try:
+                notification_data = {
+                    "service": "BILLING",
+                    "event_type": "INSURANCE_PAYMENT_RECEIVED",
+                    "patient_id": claim.invoice.patient_id,
+                    "invoice_id": claim.invoice.id,
+                    "claim_id": claim.id,
+                    "payment_id": payment.id,
+                    "amount": str(amount),
+                    "invoice_status": claim.invoice.status
+                }
+
+                # Send to notification service
+                requests.post(
+                    f"{settings.API_GATEWAY_URL}/api/events",
+                    json=notification_data,
+                    headers=request.headers,
+                    timeout=5
+                )
+            except Exception as e:
+                logger.error(f"Error sending insurance payment notification: {str(e)}")
+
+            # Return updated claim
+            serializer = InsuranceClaimSerializer(claim)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # API endpoints for creating invoices from other services

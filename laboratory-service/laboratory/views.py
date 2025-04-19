@@ -26,7 +26,7 @@ class TestTypeViewSet(viewsets.ModelViewSet):
     queryset = TestType.objects.all()
     serializer_class = TestTypeSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [IsAdmin | IsLabTechnician]
+    permission_classes = [IsAdmin | IsLabTechnician | IsDoctor]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['name', 'unit']
     search_fields = ['name', 'description']
@@ -164,6 +164,38 @@ class TestResultViewSet(viewsets.ModelViewSet):
             notification_type=Notification.NotificationType.RESULT_READY,
             message=f"Results for {lab_test.test_type.name} test for patient {lab_test.patient_id} are now available."
         )
+
+        # Create invoice for the completed lab test
+        try:
+            from .integrations import create_invoice_from_lab_test
+            # Get token from request
+            auth_header = self.request.META.get('HTTP_AUTHORIZATION')
+            auth_token = None
+            if auth_header and auth_header.startswith('Bearer '):
+                auth_token = auth_header
+
+            # Create invoice
+            invoice = create_invoice_from_lab_test(lab_test, token=auth_token)
+
+            if invoice:
+                logger.info(f"Created invoice for lab test {lab_test.id}: {invoice.get('id')}")
+
+                # Send notification about invoice
+                from .integrations import send_notification
+                send_notification(
+                    user_id=lab_test.patient_id,
+                    notification_type="INVOICE_CREATED",
+                    message=f"An invoice has been created for your {lab_test.test_type.name} test.",
+                    additional_data={
+                        "invoice_id": invoice.get('id'),
+                        "lab_test_id": lab_test.id,
+                        "amount": invoice.get('total_amount')
+                    },
+                    token=auth_token
+                )
+        except Exception as e:
+            logger.error(f"Error creating invoice for lab test {lab_test.id}: {str(e)}")
+            # Don't raise the exception to avoid affecting the main flow
 
 
 class SampleCollectionViewSet(viewsets.ModelViewSet):

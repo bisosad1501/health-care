@@ -11,7 +11,7 @@ interface RegisterData {
   password_confirm: string
   first_name: string
   last_name: string
-  role: string
+  role?: string // Role là tùy chọn, backend sẽ mặc định là PATIENT
   gender?: string
   phone_number?: string
   birth_date?: string
@@ -35,17 +35,10 @@ interface AuthResponse {
 const AuthService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      console.log("[DEBUG] Calling login API...");
       const response = await apiClient.post("/api/auth/login/", credentials);
-      console.log("[DEBUG] Login API response:", {
-        hasAccess: !!response.data.access,
-        hasRefresh: !!response.data.refresh,
-        hasUser: !!response.data.user
-      });
 
       // Lưu token và thông tin người dùng
       if (response.data.access && response.data.refresh) {
-        console.log("[DEBUG] Saving tokens to localStorage...");
         // Lưu trực tiếp vào localStorage
         if (typeof window !== "undefined") {
           localStorage.setItem("token", response.data.access);
@@ -54,49 +47,37 @@ const AuthService = {
           if (response.data.user?.role) {
             localStorage.setItem("userRole", response.data.user.role);
           }
-
-          // Kiểm tra xem token đã được lưu chưa
-          console.log("[DEBUG] Checking localStorage after saving:", {
-            token: localStorage.getItem("token") ? "Saved" : "Not saved",
-            refreshToken: localStorage.getItem("refreshToken") ? "Saved" : "Not saved",
-            user: localStorage.getItem("user") ? "Saved" : "Not saved",
-            userRole: localStorage.getItem("userRole")
-          });
         }
 
         // Gọi các phương thức helper
         this.setTokens(response.data.access, response.data.refresh);
         this.saveUserInfo(response.data.user);
-      } else {
-        console.log("[DEBUG] No tokens in response");
       }
 
       return response.data;
     } catch (error: any) {
-      console.error("Login error:", error.response?.data || error.message);
       throw error;
     }
   },
 
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post("/api/auth/register/", data)
+      const response = await apiClient.post("/api/auth/register/", data);
+
       // Lưu token và thông tin người dùng nếu đăng ký thành công
       if (response.data.access && response.data.refresh) {
-        this.setTokens(response.data.access, response.data.refresh)
-        this.saveUserInfo(response.data.user)
+        this.setTokens(response.data.access, response.data.refresh);
+        this.saveUserInfo(response.data.user);
       }
-      return response.data
+      return response.data;
     } catch (error: any) {
-      console.error("Register error:", error.response?.data || error.message)
-      throw error
+      throw error;
     }
   },
 
   async logout(refreshToken: string): Promise<void> {
     // Xóa token trước tiên để đảm bảo người dùng luôn được đăng xuất
     this.clearTokens()
-    console.log("Tokens cleared successfully")
 
     // Nếu không có refresh token, không cần gọi API
     if (!refreshToken || refreshToken === "mock_refresh_token") {
@@ -109,24 +90,17 @@ const AuthService = {
       try {
         // Cách 1: Sử dụng refresh_token
         await apiClient.post("/api/auth/logout/", { refresh_token: refreshToken })
-        console.log("Logout API call successful with refresh_token parameter")
         return
       } catch (error1) {
-        console.log("First logout attempt failed, trying with refresh parameter")
-
         try {
           // Cách 2: Sử dụng refresh
           await apiClient.post("/api/auth/logout/", { refresh: refreshToken })
-          console.log("Logout API call successful with refresh parameter")
         } catch (error2: any) {
-          // Nếu cả hai cách đều thất bại, ghi log lỗi
-          console.error("Logout API error:",
-            error2.response?.data || error2.message || "Unknown error")
+          // Không cần xử lý lỗi ở đây vì đã xóa token trên client
         }
       }
     } catch (error: any) {
-      // Xử lý lỗi chung
-      console.error("Logout error:", error.message || "Unknown error")
+      // Không cần xử lý lỗi ở đây vì đã xóa token trên client
     }
   },
 
@@ -135,7 +109,6 @@ const AuthService = {
       const response = await apiClient.post("/api/auth/token/refresh/", { refresh: refreshToken })
       return response.data
     } catch (error: any) {
-      console.error("Token refresh error:", error.response?.data || error.message)
       throw error
     }
   },
@@ -175,8 +148,6 @@ const AuthService = {
       // Nếu không có thông tin người dùng hợp lệ, trả về token không hợp lệ
       return { valid: false, user: null };
     } catch (error: any) {
-      console.error("Token validation error:", error.response?.data || error.message);
-
       // Nếu gặp lỗi khi gọi API, thử lấy thông tin người dùng từ localStorage
       try {
         const savedUser = this.getUserInfo();
@@ -184,7 +155,7 @@ const AuthService = {
           return { valid: true, user: savedUser };
         }
       } catch (localStorageError) {
-        console.error("Lỗi khi lấy thông tin người dùng từ localStorage:", localStorageError);
+        // Không cần xử lý lỗi ở đây
       }
 
       return { valid: false, user: null };
@@ -211,7 +182,7 @@ const AuthService = {
         localStorage.setItem("token", access);
         localStorage.setItem("refreshToken", refresh);
       } catch (error) {
-        console.error("Lỗi khi lưu token vào localStorage:", error);
+        // Không cần xử lý lỗi ở đây
       }
     }
   },
@@ -224,7 +195,7 @@ const AuthService = {
         localStorage.removeItem("user");
         localStorage.removeItem("userRole");
       } catch (error) {
-        console.error("Lỗi khi xóa token:", error);
+        // Không cần xử lý lỗi ở đây
       }
     }
   },
@@ -243,7 +214,7 @@ const AuthService = {
           localStorage.setItem("userRole", user.role);
         }
       } catch (error) {
-        console.error("Lỗi khi lưu thông tin người dùng vào localStorage:", error);
+        // Không cần xử lý lỗi ở đây
       }
     }
   },
@@ -255,7 +226,6 @@ const AuthService = {
         try {
           return JSON.parse(userJson)
         } catch (error) {
-          console.error("Lỗi khi phân tích thông tin người dùng:", error)
           return null
         }
       }
