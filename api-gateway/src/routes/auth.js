@@ -34,8 +34,47 @@ if (process.env.REDIS_URL) {
 }
 
 /**
- * Refresh access token using refresh token
- * POST /api/auth/token/refresh
+ * @swagger
+ * /api/auth/token/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     description: Use refresh token to get a new access token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refresh_token:
+ *                 type: string
+ *                 description: The refresh token
+ *     responses:
+ *       200:
+ *         description: Access token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 access_token:
+ *                   type: string
+ *                   description: JWT access token
+ *                 token_type:
+ *                   type: string
+ *                   example: Bearer
+ *                 expires_in:
+ *                   type: integer
+ *                   example: 3600
+ *                   description: Expiration time in seconds
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
  */
 router.post('/token/refresh', async (req, res) => {
   try {
@@ -224,8 +263,30 @@ router.post('/token/refresh', async (req, res) => {
 });
 
 /**
- * Logout user
- * POST /api/auth/logout
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     description: Invalidate tokens and terminate session
+ *     tags: [Authentication]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               terminate_all_sessions:
+ *                 type: boolean
+ *                 description: Whether to terminate all user sessions
+ *     responses:
+ *       200:
+ *         description: Successfully logged out
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post('/logout', verifyToken, async (req, res) => {
   try {
@@ -350,8 +411,33 @@ router.post('/logout', verifyToken, async (req, res) => {
 });
 
 /**
- * Get user sessions
- * GET /api/auth/sessions
+ * @swagger
+ * /api/auth/sessions:
+ *   get:
+ *     summary: Get user sessions
+ *     description: Retrieve all active sessions for the current user
+ *     tags: [Authentication]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user sessions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 sessions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
+ *       503:
+ *         description: Service unavailable
  */
 router.get('/sessions', verifyToken, async (req, res) => {
   try {
@@ -399,8 +485,30 @@ router.get('/sessions', verifyToken, async (req, res) => {
 });
 
 /**
- * Terminate a specific session
- * DELETE /api/auth/sessions/:sessionId
+ * @swagger
+ * /api/auth/sessions/{sessionId}:
+ *   delete:
+ *     summary: Terminate a specific session
+ *     description: End a specific user session by its ID
+ *     tags: [Authentication]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the session to terminate
+ *     responses:
+ *       200:
+ *         description: Session terminated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Session not found
  */
 router.delete('/sessions/:sessionId', verifyToken, async (req, res) => {
   try {

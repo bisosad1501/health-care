@@ -1,5 +1,4 @@
 const express = require('express');
-const { verifyToken } = require('../middleware/auth'); // Bạn có thể xóa dòng import này nếu không dùng nữa
 const config = require('../config');
 const {
   userServiceProxy,
@@ -14,7 +13,7 @@ const {
 
 const router = express.Router();
 
-// Public routes (no authentication required)
+// ========== AUTH ROUTES (PUBLIC) ==========
 // Direct pass-through to auth service for login and register
 router.use('/api/auth/login', authServiceProxy);
 router.use('/api/auth/register', authServiceProxy);
@@ -26,8 +25,6 @@ router.use('/api/auth/sessions', require('./auth'));
 
 // Token validation endpoint for microservices
 router.get('/api/auth/validate-token', (req, res) => {
-  // Nếu không có verifyToken, req.user có thể undefined
-  // Bạn có thể điều chỉnh logic ở đây nếu cần thiết
   res.status(200).json({
     id: req.user ? req.user.id : null,
     email: req.user ? req.user.email : null,
@@ -37,13 +34,9 @@ router.get('/api/auth/validate-token', (req, res) => {
   });
 });
 
-// Protected routes (authentication not enforced at gateway level)
+// ========== USER SERVICE ROUTES ==========
 // Special route for /api/users/me/
 router.get('/api/users/me/', (req, res) => {
-  console.log('User info request received:', req.method, req.url);
-  console.log('Request headers:', req.headers);
-  console.log('User from token:', req.user);
-
   // Forward request directly to User Service
   const userServiceUrl = config.services.user;
   const targetUrl = `${userServiceUrl}/api/users/me/`;
@@ -68,23 +61,29 @@ router.get('/api/users/me/', (req, res) => {
   });
 });
 
-// Other user routes
+// User profile and management routes
 router.use('/api/users', userServiceProxy);
-router.use('/api/doctors/available', appointmentServiceProxy); // Chuyển hướng đến appointment-service
 router.use('/api/doctors', userServiceProxy);
 router.use('/api/specialties', userServiceProxy);
-router.use('/api/departments', appointmentServiceProxy); // Chuyển hướng đến appointment-service
 router.use('/api/patient-profile', userServiceProxy);
 router.use('/api/doctor-profile', userServiceProxy);
 router.use('/api/nurse-profile', userServiceProxy);
+router.use('/api/admin-profile', userServiceProxy);
+router.use('/api/lab-technician-profile', userServiceProxy);
+router.use('/api/pharmacist-profile', userServiceProxy);
+router.use('/api/insurance-provider-profile', userServiceProxy);
+
+// User data routes
 router.use('/api/addresses', userServiceProxy);
 router.use('/api/contact-info', userServiceProxy);
 router.use('/api/documents', userServiceProxy);
 router.use('/api/admin', userServiceProxy);
 router.use('/api/insurance-information', userServiceProxy);
-router.use('/api/insurance-providers', userServiceProxy);
+router.use('/api/preferences', userServiceProxy);
+router.use('/api/activities', userServiceProxy);
 
-// Direct test endpoint for debugging
+// ========== APPOINTMENT SERVICE ROUTES ==========
+// Test endpoint for debugging
 router.get('/api/appointments/test', (req, res, next) => {
   console.log('[DEBUG] Forwarding to test endpoint');
   console.log('User from token:', req.user);
@@ -156,13 +155,21 @@ router.get('/api/direct/patient-appointments', (req, res) => {
     });
 });
 
-// Appointment Service routes
+// Main appointment routes
 router.use('/api/appointments', appointmentServiceProxy);
+router.use('/api/doctors/available', appointmentServiceProxy);
+router.use('/api/departments', appointmentServiceProxy);
 router.use('/api/doctor-availabilities', appointmentServiceProxy);
 router.use('/api/time-slots', appointmentServiceProxy);
 router.use('/api/appointment-reminders', appointmentServiceProxy);
+router.use('/api/appointment-reasons', appointmentServiceProxy);
+router.use('/api/patient-visits', appointmentServiceProxy);
+router.use('/api/appointment-types', appointmentServiceProxy);
+router.use('/api/locations', appointmentServiceProxy);
+router.use('/api/priorities', appointmentServiceProxy);
+router.use('/api/verify-insurance', appointmentServiceProxy);
 
-// Medical Record Service routes
+// ========== MEDICAL RECORD SERVICE ROUTES ==========
 router.use('/api/medical-records', medicalRecordServiceProxy);
 router.use('/api/encounters', medicalRecordServiceProxy);
 router.use('/api/diagnoses', medicalRecordServiceProxy);
@@ -174,13 +181,14 @@ router.use('/api/medications', medicalRecordServiceProxy);
 router.use('/api/vital-signs', medicalRecordServiceProxy);
 router.use('/api/lab-tests', medicalRecordServiceProxy);
 router.use('/api/lab-results', medicalRecordServiceProxy);
+
 // Special route for creating encounters from appointments
 router.post('/api/appointments/:appointment_id/create-encounter', (req, res, next) => {
   console.log('[MEDICAL_RECORD] Creating encounter from appointment');
   medicalRecordServiceProxy(req, res, next);
 });
 
-// Pharmacy Service routes
+// ========== PHARMACY SERVICE ROUTES ==========
 router.use('/api/prescriptions', pharmacyServiceProxy);
 router.use('/api/medications', pharmacyServiceProxy);
 router.use('/api/pharmacy', (req, res, next) => {
@@ -194,11 +202,11 @@ router.use('/api/pharmacy', (req, res, next) => {
   console.log(`[PHARMACY] User info: ${JSON.stringify(req.user)}`);
 
   // Forward the request to the pharmacy service
-  // Không cần thay đổi URL vì Pharmacy Service đã hỗ trợ cả hai đường dẫn
   pharmacyServiceProxy(req, res, next);
 });
 
-// Billing Service routes
+// ========== BILLING SERVICE ROUTES ==========
+// Main billing routes with user info headers
 router.use('/api/invoices', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
@@ -219,6 +227,60 @@ router.use('/api/invoices', (req, res, next) => {
   billingServiceProxy(req, res, next);
 });
 
+// Invoice related routes
+router.use('/api/invoice-items', (req, res, next) => {
+  // Add user role and info to headers
+  if (req.user && req.user.role) {
+    req.headers['X-User-Role'] = req.user.role;
+  }
+
+  if (req.user) {
+    req.headers['X-User-ID'] = req.user.user_id;
+    req.headers['X-User-Email'] = req.user.email;
+    req.headers['X-User-First-Name'] = req.user.first_name || '';
+    req.headers['X-User-Last-Name'] = req.user.last_name || '';
+  }
+
+  billingServiceProxy(req, res, next);
+});
+
+// Payments routes
+router.use('/api/payments', (req, res, next) => {
+  // Add user role and info to headers
+  if (req.user && req.user.role) {
+    req.headers['X-User-Role'] = req.user.role;
+  }
+
+  if (req.user) {
+    req.headers['X-User-ID'] = req.user.user_id;
+    req.headers['X-User-Email'] = req.user.email;
+    req.headers['X-User-First-Name'] = req.user.first_name || '';
+    req.headers['X-User-Last-Name'] = req.user.last_name || '';
+  }
+
+  billingServiceProxy(req, res, next);
+});
+
+// Insurance claims routes
+router.use('/api/insurance-claims', (req, res, next) => {
+  // Add user role and info to headers
+  if (req.user && req.user.role) {
+    console.log(`[BILLING] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
+    req.headers['X-User-Role'] = req.user.role;
+  }
+
+  if (req.user) {
+    req.headers['X-User-ID'] = req.user.user_id;
+    req.headers['X-User-Email'] = req.user.email;
+    req.headers['X-User-First-Name'] = req.user.first_name || '';
+    req.headers['X-User-Last-Name'] = req.user.last_name || '';
+    console.log(`[BILLING] Insurance claim request from: ${JSON.stringify(req.user)}`);
+  }
+
+  console.log(`[BILLING] Insurance claim request URL: ${req.url}`);
+  billingServiceProxy(req, res, next);
+});
+
 // Special routes for creating invoices from other services
 router.use('/api/create-from-lab-test', (req, res, next) => {
   console.log('[BILLING] Creating invoice from lab test');
@@ -228,8 +290,6 @@ router.use('/api/create-from-lab-test', (req, res, next) => {
     req.headers['X-User-Role'] = req.user.role;
     req.headers['X-User-Email'] = req.user.email;
   }
-  // Rewrite path to match billing service endpoint
-  req.url = req.url.replace('/api/create-from-lab-test', '/api/create-from-lab-test');
   billingServiceProxy(req, res, next);
 });
 
@@ -241,8 +301,6 @@ router.use('/api/create-from-prescription', (req, res, next) => {
     req.headers['X-User-Role'] = req.user.role;
     req.headers['X-User-Email'] = req.user.email;
   }
-  // Rewrite path to match billing service endpoint
-  req.url = req.url.replace('/api/create-from-prescription', '/api/create-from-prescription');
   billingServiceProxy(req, res, next);
 });
 
@@ -254,8 +312,6 @@ router.use('/api/create-from-medical-record', (req, res, next) => {
     req.headers['X-User-Role'] = req.user.role;
     req.headers['X-User-Email'] = req.user.email;
   }
-  // Rewrite path to match billing service endpoint
-  req.url = req.url.replace('/api/create-from-medical-record', '/api/create-from-medical-record');
   billingServiceProxy(req, res, next);
 });
 
@@ -267,74 +323,10 @@ router.use('/api/create-from-appointment', (req, res, next) => {
     req.headers['X-User-Role'] = req.user.role;
     req.headers['X-User-Email'] = req.user.email;
   }
-  // Rewrite path to match billing service endpoint
-  req.url = req.url.replace('/api/create-from-appointment', '/api/create-from-appointment');
   billingServiceProxy(req, res, next);
 });
 
-// Invoice Items routes (part of Billing Service)
-router.use('/api/invoice-items', (req, res, next) => {
-  // Add user role to headers
-  if (req.user && req.user.role) {
-    req.headers['X-User-Role'] = req.user.role;
-  }
-
-  // Add user info to headers
-  if (req.user) {
-    req.headers['X-User-ID'] = req.user.user_id;
-    req.headers['X-User-Email'] = req.user.email;
-    req.headers['X-User-First-Name'] = req.user.first_name || '';
-    req.headers['X-User-Last-Name'] = req.user.last_name || '';
-  }
-
-  // Forward the request to the billing service
-  billingServiceProxy(req, res, next);
-});
-
-// Payments routes (part of Billing Service)
-router.use('/api/payments', (req, res, next) => {
-  // Add user role to headers
-  if (req.user && req.user.role) {
-    req.headers['X-User-Role'] = req.user.role;
-  }
-
-  // Add user info to headers
-  if (req.user) {
-    req.headers['X-User-ID'] = req.user.user_id;
-    req.headers['X-User-Email'] = req.user.email;
-    req.headers['X-User-First-Name'] = req.user.first_name || '';
-    req.headers['X-User-Last-Name'] = req.user.last_name || '';
-  }
-
-  // Forward the request to the billing service
-  billingServiceProxy(req, res, next);
-});
-
-// Insurance claims routes (part of Billing Service)
-router.use('/api/insurance-claims', (req, res, next) => {
-  // Add user role to headers
-  if (req.user && req.user.role) {
-    console.log(`[BILLING] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
-    req.headers['X-User-Role'] = req.user.role;
-  }
-
-  // Add user info to headers
-  if (req.user) {
-    req.headers['X-User-ID'] = req.user.user_id;
-    req.headers['X-User-Email'] = req.user.email;
-    req.headers['X-User-First-Name'] = req.user.first_name || '';
-    req.headers['X-User-Last-Name'] = req.user.last_name || '';
-    console.log(`[BILLING] Insurance claim request from: ${JSON.stringify(req.user)}`);
-  }
-
-  // Rewrite path to match billing service endpoint
-  req.url = req.url.replace('/api/insurance-claims', '/api/insurance-claims');
-  console.log(`[BILLING] Insurance claim request URL: ${req.url}`);
-
-  // Forward the request to the billing service
-  billingServiceProxy(req, res, next);
-});
-// Laboratory Service routes
+// ========== LABORATORY SERVICE ROUTES ==========
 router.use('/api/laboratory', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
@@ -349,16 +341,11 @@ router.use('/api/laboratory', (req, res, next) => {
   labServiceProxy(req, res, next);
 });
 
-// Laboratory Test Types routes
 router.use('/api/test-types', labServiceProxy);
-
-// Laboratory Test Results routes
 router.use('/api/test-results', labServiceProxy);
-
-// Laboratory Sample Collections routes
 router.use('/api/sample-collections', labServiceProxy);
 
-// Notification Service routes
+// ========== NOTIFICATION SERVICE ROUTES ==========
 router.use('/api/notifications', (req, res, next) => {
   // Add user role to headers
   if (req.user && req.user.role) {
@@ -373,6 +360,73 @@ router.use('/api/notifications', (req, res, next) => {
     req.headers['X-User-First-Name'] = req.user.first_name || '';
     req.headers['X-User-Last-Name'] = req.user.last_name || '';
     console.log(`[NOTIFICATION] User info: ${JSON.stringify(req.user)}`);
+  }
+
+  // Forward the request to the notification service
+  notificationServiceProxy(req, res, next);
+});
+
+// In-app notifications route
+router.use('/api/in-app-notifications', (req, res, next) => {
+  console.log('[NOTIFICATION] In-app notification request');
+
+  // Add user role to headers
+  if (req.user && req.user.role) {
+    console.log(`[NOTIFICATION] Setting role ${req.user.role} for user_id ${req.user.user_id}`);
+    req.headers['X-User-Role'] = req.user.role;
+  }
+
+  // Add user info to headers
+  if (req.user) {
+    req.headers['X-User-ID'] = req.user.user_id;
+    req.headers['X-User-Email'] = req.user.email;
+    req.headers['X-User-First-Name'] = req.user.first_name || '';
+    req.headers['X-User-Last-Name'] = req.user.last_name || '';
+    console.log(`[NOTIFICATION] In-app notification request from: ${JSON.stringify(req.user)}`);
+  }
+
+  // Create a direct request to the notification service
+  const axios = require('axios');
+  const notificationServiceUrl = config.services.notification;
+
+  // Add headers from token
+  const headers = {
+    'Authorization': req.headers.authorization,
+    'X-User-ID': req.user ? (req.user.user_id || req.user.id) : '',
+    'X-User-Role': req.user ? req.user.role : '',
+    'X-User-Email': req.user ? req.user.email : ''
+  };
+
+  console.log(`[NOTIFICATION] Sending request to: ${notificationServiceUrl}/api/in-app/`);
+
+  // Call the service directly
+  axios.get(`${notificationServiceUrl}/api/in-app/`, { headers })
+    .then(response => {
+      console.log('[NOTIFICATION] Response received');
+      res.status(200).json(response.data);
+    })
+    .catch(error => {
+      console.error('[NOTIFICATION] Error calling in-app notifications:', error.message);
+      if (error.response) {
+        console.error('[NOTIFICATION] Error response data:', error.response.data);
+        console.error('[NOTIFICATION] Error response status:', error.response.status);
+      }
+      res.status(error.response?.status || 500).json({
+        error: error.message,
+        details: error.response?.data
+      });
+    });
+});
+
+// WebSocket notifications route
+router.use('/ws/notifications', (req, res, next) => {
+  console.log('[NOTIFICATION] WebSocket connection request');
+
+  // Add user info to headers
+  if (req.user) {
+    req.headers['X-User-ID'] = req.user.user_id;
+    req.headers['X-User-Role'] = req.user.role;
+    req.headers['X-User-Email'] = req.user.email;
   }
 
   // Forward the request to the notification service
@@ -394,14 +448,14 @@ router.post('/api/notifications/events', (req, res, next) => {
   }
 
   // Forward the request to the notification service events endpoint
-  // Manually set the URL to match the endpoint in the notification service
   req.url = '/api/events';
   console.log(`[NOTIFICATIONS] Target URL: http://notification-service:8006${req.url}`);
   console.log(`[NOTIFICATIONS] Headers: ${JSON.stringify(req.headers)}`);
   notificationServiceProxy(req, res, next);
 });
 
-// Health check endpoints
+// ========== HEALTH CHECK ENDPOINTS ==========
+// Main API Gateway health check
 router.get('/health', (req, res) => {
   res.status(200).json({
     status: 'success',
@@ -409,7 +463,6 @@ router.get('/health', (req, res) => {
   });
 });
 
-// Đường dẫn health check đơn giản hóa
 router.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'UP',
@@ -417,7 +470,7 @@ router.get('/api/health', (req, res) => {
   });
 });
 
-// Health check cho các service - đường dẫn đơn giản hóa
+// Service-specific health checks - Simplified paths
 router.use('/api/laboratory/health', (req, res, next) => {
   req.url = '/health/';
   labServiceProxy(req, res, next);
@@ -428,7 +481,7 @@ router.use('/api/pharmacy/health', (req, res, next) => {
   pharmacyServiceProxy(req, res, next);
 });
 
-// Trả về trực tiếp từ API Gateway cho Medical Record Service
+// Direct responses for Medical Record Service health checks
 router.get('/api/medical-records/health', (req, res) => {
   res.status(200).json({
     status: 'UP',
@@ -437,21 +490,6 @@ router.get('/api/medical-records/health', (req, res) => {
 });
 
 router.get('/api/medical-records/health/', (req, res) => {
-  res.status(200).json({
-    status: 'UP',
-    service: 'medical-record-service'
-  });
-});
-
-// Chuyển đổi đường dẫn cũ cho Medical Record Service
-router.get('/api/medical-records/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'UP',
-    service: 'medical-record-service'
-  });
-});
-
-router.get('/api/medical-records/api/health/', (req, res) => {
   res.status(200).json({
     status: 'UP',
     service: 'medical-record-service'
@@ -478,7 +516,7 @@ router.use('/api/notifications/health', (req, res, next) => {
   notificationServiceProxy(req, res, next);
 });
 
-// Giữ lại đường dẫn cũ để đảm bảo tương thích ngược
+// Backward compatibility - Legacy paths
 router.use('/api/laboratory/api/health', labServiceProxy);
 router.use('/api/pharmacy/api/health', pharmacyServiceProxy);
 router.use('/api/medical-records/api/health', medicalRecordServiceProxy);

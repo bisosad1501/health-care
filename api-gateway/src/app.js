@@ -12,6 +12,7 @@ const routes = require('./routes');
 const authRoutes = require('./routes/auth');
 const { errorHandler, notFoundHandler } = require('./middleware/error-handler');
 const { sessionMiddleware, tokenRefreshMiddleware } = require('./middleware/session');
+const { swaggerDocs } = require('./config/swagger'); // Import Swagger configuration
 
 // Initialize Express app
 const app = express();
@@ -138,6 +139,9 @@ app.use('/api/auth', authRoutes);
 // Apply main routes
 app.use(routes);
 
+// Setup Swagger documentation
+swaggerDocs(app);
+
 // Apply error handling middleware
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -165,7 +169,5 @@ if (sslEnabled()) {
     });
   }
 }
-
-
 
 module.exports = app;

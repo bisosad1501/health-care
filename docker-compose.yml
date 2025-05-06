@@ -18,9 +18,9 @@ services:
 
   # Common Auth Library
   common-auth:
-    build: ./common-auth
+    build: ./services/common-auth
     volumes:
-      - ./common-auth:/app
+      - ./services/common-auth:/app
 
   # Redis for caching, session management and message broker
   redis:
@@ -57,25 +57,30 @@ services:
       - MAX_SESSIONS_PER_USER=5
       - ROTATE_REFRESH_TOKENS=false
       - USER_SERVICE_URL=http://user-service:8000
-      - APPOINTMENT_SERVICE_URL=http://appointment-service:8002
       - MEDICAL_RECORD_SERVICE_URL=http://medical-record-service:8001
+      - APPOINTMENT_SERVICE_URL=http://appointment-service:8002
       - BILLING_SERVICE_URL=http://billing-service:8003
       - PHARMACY_SERVICE_URL=http://pharmacy-service:8004
       - LAB_SERVICE_URL=http://laboratory-service:8005
       - NOTIFICATION_SERVICE_URL=http://notification-service:8006
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+    command: >
+      sh -c "
+        npm install swagger-jsdoc swagger-ui-express yamljs &&
+        npm start
+      "
     depends_on:
       - redis
       - user-service
     volumes:
-      - ./api-gateway:/app
-      - /app/node_modules
+      - ./api-gateway:/app:delegated
+      - api_gateway_node_modules:/app/node_modules
 
   # User Service (Authentication, Authorization & User Management)
   user-service:
     build:
       context: .
-      dockerfile: ./user-service/Dockerfile
+      dockerfile: ./services/user-service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,19 +92,18 @@ services:
       - JWT_SECRET=${JWT_SECRET:-HS256_JWT_SECRET_KEY_SHOULD_BE_AT_LEAST_32_CHARS_LONG}
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/healthcare_user
       - REDIS_URL=redis://redis:6379/0
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=adminpassword
     ports:
       - "8000:8000"
     volumes:
-      - ./user-service:/app
-      - ./common-auth:/app/common-auth
+      - ./services/user-service:/app
+      - ./services/common-auth:/app/common-auth
+      - api_specs:/api-specs
 
   # Medical Record Service
   medical-record-service:
     build:
       context: .
-      dockerfile: ./medical-record-service/Dockerfile
+      dockerfile: ./services/medical-record-service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,19 +116,18 @@ services:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/healthcare_medical
       - REDIS_URL=redis://redis:6379/0
       - API_GATEWAY_URL=http://api-gateway:4000
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=adminpassword
     ports:
       - "8001:8001"
     volumes:
-      - ./medical-record-service:/app
-      - ./common-auth:/app/common-auth
+      - ./services/medical-record-service:/app
+      - ./services/common-auth:/app/common-auth
+      - api_specs:/api-specs
 
   # Appointment Service
   appointment-service:
     build:
       context: .
-      dockerfile: ./appointment-service/Dockerfile
+      dockerfile: ./services/appointment-service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,19 +148,18 @@ services:
       - PHARMACY_SERVICE_URL=http://pharmacy-service:8004
       - LAB_SERVICE_URL=http://laboratory-service:8005
       - NOTIFICATION_SERVICE_URL=http://notification-service:8006
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=adminpassword
     ports:
       - "8002:8002"
     volumes:
-      - ./appointment-service:/app
-      - ./common-auth:/app/common-auth
+      - ./services/appointment-service:/app
+      - ./services/common-auth:/app/common-auth
+      - api_specs:/api-specs
 
   # Billing Service
   billing-service:
     build:
       context: .
-      dockerfile: ./billing-service/Dockerfile
+      dockerfile: ./services/billing-service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -175,19 +177,18 @@ services:
       - API_GATEWAY_URL=http://api-gateway:4000
       - USER_SERVICE_URL=http://user-service:8000
       - MEDICAL_RECORD_SERVICE_URL=http://medical-record-service:8001
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=adminpassword
     ports:
       - "8003:8003"
     volumes:
-      - ./billing-service:/app
-      - ./common-auth:/app/common-auth
+      - ./services/billing-service:/app
+      - ./services/common-auth:/app/common-auth
+      - api_specs:/api-specs
 
   # Pharmacy Service
   pharmacy-service:
     build:
       context: .
-      dockerfile: ./pharmacy-service/Dockerfile
+      dockerfile: ./services/pharmacy-service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -204,14 +205,15 @@ services:
     ports:
       - "8004:8004"
     volumes:
-      - ./pharmacy-service:/app
-      - ./common-auth:/app/common-auth
+      - ./services/pharmacy-service:/app
+      - ./services/common-auth:/app/common-auth
+      - api_specs:/api-specs
 
   # Notification Service
   notification-service:
     build:
       context: .
-      dockerfile: ./notification-service/Dockerfile
+      dockerfile: ./services/notification-service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -234,20 +236,26 @@ services:
       - PHARMACY_SERVICE_URL=http://pharmacy-service:8004
       - LABORATORY_SERVICE_URL=http://laboratory-service:8005
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=django-db
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=adminpassword
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CHANNEL_LAYERS_HOST=redis://redis:6379/1
     ports:
       - "8006:8006"
     volumes:
-      - ./notification-service:/app
-      - ./common-auth:/app/common-auth
+      - ./services/notification-service:/app
+      - ./services/common-auth:/app/common-auth
+      - api_specs:/api-specs
+    command: >  # Override the default command to run Daphne for WebSocket support
+      sh -c "
+        python manage.py migrate &&
+        python manage.py collectstatic --noinput &&
+        daphne -b 0.0.0.0 -p 8006 core.asgi:application
+      "
 
   # Laboratory Service
   laboratory-service:
     build:
       context: .
-      dockerfile: ./laboratory-service/Dockerfile
+      dockerfile: ./services/laboratory-service/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -265,14 +273,20 @@ services:
       - API_GATEWAY_URL=http://api-gateway:4000
       - USER_SERVICE_URL=http://user-service:8000
       - MEDICAL_RECORD_SERVICE_URL=http://medical-record-service:8001
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=adminpassword
     ports:
       - "8005:8005"
     volumes:
-      - ./laboratory-service:/app
-      - ./common-auth:/app/common-auth
+      - ./services/laboratory-service:/app
+      - ./services/common-auth:/app/common-auth
+      - api_specs:/api-specs
 
 volumes:
   postgres_data:
   redis_data:
+  api_gateway_node_modules:
+  api_specs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/docs/api-specs

@@ -12,11 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { HeartPulse, Bell, Menu } from "lucide-react"
+import { HeartPulse, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAuth } from "@/providers/auth-provider"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import NotificationBell from "@/components/NotificationBell"
 
 export function AppHeader() {
   const { user, logout } = useAuth()
@@ -84,15 +85,7 @@ export function AppHeader() {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/notifications">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0">
-                3
-              </Badge>
-              <span className="sr-only">Thông báo</span>
-            </Button>
-          </Link>
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
