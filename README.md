@@ -135,14 +135,5 @@ healthcare-microservices/
 
 ---
 
-## 👥 Thành viên Nhóm và Đóng góp
-
-### Thành viên Nhóm
-
-1. **Lê Đức Thắng-B21DCDT205**
-2. **Nguyễn Vũ Duy Anh-B21DCVT004**
-3. **Nguyễn Đức Tài-B21DCDT199**
-
-## 👨‍🏫 Lời cảm ơn
-
-Dự án này được phát triển cho bài tập lớn môn Phát triển phần mềm hướng dịch vụ của Thầy Đặng Ngọc Hùng
+## Tác giả
+Lê Đức Thắng
