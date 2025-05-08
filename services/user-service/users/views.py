@@ -301,13 +301,14 @@ class ProfileViewSetMixin:
         """Lấy danh sách hồ sơ dựa trên quyền"""
         if self.request.user.role == 'ADMIN':
             return self.model.objects.all()
-        return self.model.objects.filter(user=self.request.user)
+        return self.model.objects.filter(user_id=self.request.user.id)
 
     @action(detail=False, methods=['get'])
     def me(self, request):
         """Lấy hồ sơ của người dùng hiện tại"""
         try:
-            profile = self.model.objects.get(user=request.user)
+            # Sử dụng user_id thay vì đối tượng user
+            profile = self.model.objects.get(user_id=request.user.id)
             serializer = self.get_serializer(profile)
             return Response(serializer.data)
         except self.model.DoesNotExist:
@@ -324,7 +325,7 @@ class ProfileViewSetMixin:
             )
 
         try:
-            profile = self.model.objects.get(user=request.user)
+            profile = self.model.objects.get(user_id=request.user.id)
             serializer = self.get_serializer(profile, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -343,7 +344,7 @@ class ProfileViewSetMixin:
     def remove(self, request):
         """Xóa hồ sơ của người dùng hiện tại"""
         try:
-            profile = self.model.objects.get(user=request.user)
+            profile = self.model.objects.get(user_id=request.user.id)
             profile.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except self.model.DoesNotExist:
