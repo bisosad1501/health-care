@@ -62,7 +62,11 @@ const AuthService = {
 
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
+      console.log("Register data before sending:", JSON.stringify(data, null, 2));
+
+      // Gửi dữ liệu trực tiếp, không tạo lại đối tượng
       const response = await apiClient.post("/api/auth/register/", data);
+      console.log("Register API response:", response.data);
 
       // Lưu token và thông tin người dùng nếu đăng ký thành công
       if (response.data.access && response.data.refresh) {
@@ -71,6 +75,7 @@ const AuthService = {
       }
       return response.data;
     } catch (error: any) {
+      console.error("Register error in auth-service:", error);
       throw error;
     }
   },

@@ -18,9 +18,9 @@ const apiClient = axios.create({
 // Interceptor để thêm token vào header và log request
 apiClient.interceptors.request.use(
   (config) => {
-    // Log request để debug
+    // Log request để debug chi tiết hơn
     console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
-      data: config.data,
+      data: typeof config.data === 'string' ? JSON.parse(config.data) : config.data,
       params: config.params,
       headers: config.headers
     });
@@ -51,12 +51,22 @@ apiClient.interceptors.response.use(
     return response
   },
   async (error) => {
-    // Log lỗi response để debug
+    // Log lỗi response để debug chi tiết hơn
     console.error(`[API Error] ${error.response?.status || 'Unknown'} ${error.config?.method?.toUpperCase() || 'Unknown'} ${error.config?.url || 'Unknown'}`, {
       message: error.message,
       response: error.response?.data,
-      config: error.config
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        data: typeof error.config?.data === 'string' ? JSON.parse(error.config?.data) : error.config?.data,
+        headers: error.config?.headers
+      }
     });
+
+    // Log chi tiết hơn về lỗi
+    if (error.response?.data) {
+      console.error("API Error Details:", JSON.stringify(error.response.data, null, 2));
+    }
 
     const originalRequest = error.config
 

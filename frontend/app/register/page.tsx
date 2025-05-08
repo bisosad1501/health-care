@@ -106,17 +106,29 @@ export default function RegisterPage() {
       const authService = await import("@/lib/api/auth-service").then((mod) => mod.default)
 
       // Format dữ liệu theo yêu cầu của API - chỉ gửi các thông tin cần thiết
-      // Dựa trên mẫu Postman đã cung cấp
+      // Đảm bảo tên trường khớp với yêu cầu của backend
       const registerData = {
         email: formData.email,
         password: formData.password,
         password_confirm: formData.confirmPassword,
         first_name: formData.firstName,
-        last_name: formData.lastName
-        // Không cần gửi role vì backend đã mặc định là PATIENT
+        last_name: formData.lastName,
+        role: "PATIENT"
       }
 
-      const response = await authService.register(registerData);
+      console.log("Sending register data from page:", JSON.stringify(registerData, null, 2));
+      // Gọi API trực tiếp thay vì qua authService để kiểm tra
+      const apiClient = await import("@/lib/api/api-client").then((mod) => mod.default);
+      const response = await apiClient.post("/api/auth/register/", registerData);
+      console.log("Register response:", response.data);
+
+      // Lưu token và thông tin người dùng
+      if (response.data.access && response.data.refresh) {
+        localStorage.setItem("token", response.data.access);
+        localStorage.setItem("refreshToken", response.data.refresh);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        localStorage.setItem("userRole", response.data.user.role);
+      }
 
       toast({
         title: "Đăng ký thành công",
@@ -125,23 +137,28 @@ export default function RegisterPage() {
 
       // Chuyển hướng đến dashboard tương ứng với vai trò
       // Đảm bảo vai trò được chuyển thành chữ thường
-      const userRole = (authService.getUserRole() || "patient").toLowerCase()
+      const userRole = (response.data.user.role || "patient").toLowerCase()
       router.push(`/dashboard/${userRole}`)
     } catch (error: any) {
+      console.error("Register error:", error);
 
       // Hiển thị thông báo lỗi chi tiết hơn
       let errorMessage = "Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.";
 
       if (error.response?.data) {
+        console.log("Error response data:", JSON.stringify(error.response.data, null, 2));
+
         // Xử lý các trường hợp lỗi cụ thể
         if (error.response.data.detail) {
           errorMessage = error.response.data.detail;
         } else if (error.response.data.email) {
-          errorMessage = `Email: ${error.response.data.email}`;
+          errorMessage = `Email: ${Array.isArray(error.response.data.email) ? error.response.data.email.join(', ') : error.response.data.email}`;
         } else if (error.response.data.password) {
-          errorMessage = `Mật khẩu: ${error.response.data.password}`;
+          errorMessage = `Mật khẩu: ${Array.isArray(error.response.data.password) ? error.response.data.password.join(', ') : error.response.data.password}`;
+        } else if (error.response.data.password_confirm) {
+          errorMessage = `Xác nhận mật khẩu: ${Array.isArray(error.response.data.password_confirm) ? error.response.data.password_confirm.join(', ') : error.response.data.password_confirm}`;
         } else if (error.response.data.non_field_errors) {
-          errorMessage = error.response.data.non_field_errors;
+          errorMessage = Array.isArray(error.response.data.non_field_errors) ? error.response.data.non_field_errors.join(', ') : error.response.data.non_field_errors;
         } else {
           // Nếu có dữ liệu lỗi nhưng không thuộc các trường hợp trên
           errorMessage = JSON.stringify(error.response.data);
