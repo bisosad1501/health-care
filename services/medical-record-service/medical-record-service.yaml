@@ -294,6 +294,21 @@ paths:
       in: path
       required: true
       type: string
+  /encounters/{encounter_id}/update-status/:
+    patch:
+      operationId: encounters_update-status_partial_update
+      description: API endpoint để cập nhật trạng thái cuộc gặp.
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+      - encounters
+    parameters:
+    - name: encounter_id
+      in: path
+      required: true
+      type: string
   /encounters/{id}/:
     get:
       operationId: encounters_read
@@ -306,6 +321,15 @@ paths:
       - encounters
     put:
       operationId: encounters_update
+      description: API endpoint để xem, cập nhật và xóa một phiên khám.
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+      - encounters
+    patch:
+      operationId: encounters_partial_update
       description: API endpoint để xem, cập nhật và xóa một phiên khám.
       parameters: []
       responses:
@@ -596,6 +620,52 @@ paths:
       tags:
       - medical-records
     parameters: []
+  /medical-records/patient/{patient_id}/:
+    get:
+      operationId: medical-records_patient_records
+      description: Lấy hồ sơ y tế của bệnh nhân.
+      parameters:
+      - name: page
+        in: query
+        description: A page number within the paginated result set.
+        required: false
+        type: integer
+      - name: page_size
+        in: query
+        description: Number of results to return per page.
+        required: false
+        type: integer
+      responses:
+        '200':
+          description: ''
+          schema:
+            required:
+            - count
+            - results
+            type: object
+            properties:
+              count:
+                type: integer
+              next:
+                type: string
+                format: uri
+                x-nullable: true
+              previous:
+                type: string
+                format: uri
+                x-nullable: true
+              results:
+                type: array
+                items:
+                  $ref: '#/definitions/MedicalRecord'
+      tags:
+      - medical-records
+    parameters:
+    - name: patient_id
+      in: path
+      description: ID của bệnh nhân trong user-service
+      required: true
+      type: integer
   /medical-records/{id}/:
     get:
       operationId: medical-records_read
@@ -1358,6 +1428,31 @@ definitions:
         - EMERGENCY
         - FOLLOWUP
         - TELECONSULTATION
+      status:
+        title: Status
+        type: string
+        enum:
+        - SCHEDULED
+        - IN_PROGRESS
+        - COMPLETED
+        - CANCELLED
+        - NO_SHOW
+      billing_status:
+        title: Billing status
+        type: string
+        enum:
+        - NOT_BILLED
+        - BILLED
+        - PAID
+        - PARTIALLY_PAID
+        - WAIVED
+      invoice_id:
+        title: Invoice id
+        description: ID của hóa đơn trong billing-service
+        type: integer
+        maximum: 2147483647
+        minimum: -2147483648
+        x-nullable: true
       notes:
         title: Notes
         type: string

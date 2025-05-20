@@ -75,7 +75,7 @@ export interface InsuranceClaim {
 
 const BillingService = {
   // Invoices
-  async getAllInvoices(): Promise<Invoice[]> {
+  async getAllInvoices(): Promise<any> {
     const response = await apiClient.get("/api/invoices/")
     return response.data
   },
@@ -85,8 +85,15 @@ const BillingService = {
     return response.data
   },
 
-  async getInvoiceById(id: number): Promise<InvoiceWithDetails> {
+  async getInvoiceById(id: number): Promise<any> {
     const response = await apiClient.get(`/api/invoices/${id}/`)
+    return response.data
+  },
+
+  async exportInvoicePdf(id: number): Promise<Blob> {
+    const response = await apiClient.get(`/api/invoices/${id}/export_pdf/`, {
+      responseType: 'blob'
+    })
     return response.data
   },
 
@@ -102,6 +109,11 @@ const BillingService = {
 
   async submitInsuranceClaim(invoiceId: number, data: Partial<InsuranceClaim>): Promise<InsuranceClaim> {
     const response = await apiClient.post(`/api/invoices/${invoiceId}/submit_insurance_claim/`, data)
+    return response.data
+  },
+
+  async applyInsurance(invoiceId: number): Promise<InvoiceWithDetails> {
+    const response = await apiClient.post(`/api/invoices/${invoiceId}/apply_insurance/`)
     return response.data
   },
 

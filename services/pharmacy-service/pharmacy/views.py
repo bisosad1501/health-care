@@ -69,7 +69,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     queryset = Prescription.objects.all()
     serializer_class = PrescriptionSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [IsDoctor | IsAdmin | IsPharmacist]
+    permission_classes = [IsDoctor | IsAdmin | IsPharmacist | IsPatient]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['patient_id', 'doctor_id', 'diagnosis_id', 'encounter_id', 'status']
     ordering_fields = ['date_prescribed', 'created_at', 'status']
@@ -238,7 +238,7 @@ class PrescriptionItemViewSet(viewsets.ModelViewSet):
     queryset = PrescriptionItem.objects.all()
     serializer_class = PrescriptionItemSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [HasAnyRole]
+    permission_classes = [HasAnyRole]  # HasAnyRole already includes PATIENT role
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['prescription', 'medication']
 
@@ -255,6 +255,10 @@ class PrescriptionItemViewSet(viewsets.ModelViewSet):
         # Doctors can only see prescription items they created
         if user_role == 'DOCTOR':
             queryset = queryset.filter(prescription__doctor_id=user_id)
+
+        # Patients can only see their own prescription items
+        elif user_role == 'PATIENT':
+            queryset = queryset.filter(prescription__patient_id=user_id)
 
         return queryset
 

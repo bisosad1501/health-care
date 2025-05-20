@@ -37,6 +37,17 @@ paths:
       tags:
       - from_appointment
     parameters: []
+  /create-from-encounter/:
+    post:
+      operationId: from_encounter
+      description: Create an invoice from an encounter.
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      tags:
+      - from_encounter
+    parameters: []
   /create-from-lab-test/:
     post:
       operationId: from_lab_test
@@ -231,6 +242,17 @@ paths:
     post:
       operationId: invoice-creation_from_appointment
       description: Create an invoice from an appointment.
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      tags:
+      - invoice-creation
+    parameters: []
+  /invoice-creation/from_encounter/:
+    post:
+      operationId: invoice-creation_from_encounter
+      description: Create an invoice from an encounter.
       parameters: []
       responses:
         '201':
@@ -887,6 +909,12 @@ definitions:
         maximum: 2147483647
         minimum: -2147483648
         x-nullable: true
+      encounter_id:
+        title: Encounter id
+        type: integer
+        maximum: 2147483647
+        minimum: -2147483648
+        x-nullable: true
       lab_test_id:
         title: Lab test id
         type: integer
@@ -895,6 +923,12 @@ definitions:
         x-nullable: true
       prescription_id:
         title: Prescription id
+        type: integer
+        maximum: 2147483647
+        minimum: -2147483648
+        x-nullable: true
+      medication_id:
+        title: Medication id
         type: integer
         maximum: 2147483647
         minimum: -2147483648

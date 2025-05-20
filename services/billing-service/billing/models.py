@@ -85,8 +85,10 @@ class InvoiceItem(models.Model):
     # Specific reference fields for each service
     appointment_id = models.IntegerField(null=True, blank=True)
     medical_record_id = models.IntegerField(null=True, blank=True)
+    encounter_id = models.IntegerField(null=True, blank=True)
     lab_test_id = models.IntegerField(null=True, blank=True)
     prescription_id = models.IntegerField(null=True, blank=True)
+    medication_id = models.IntegerField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

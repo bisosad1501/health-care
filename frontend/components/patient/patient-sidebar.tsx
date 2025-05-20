@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Calendar, FileText, Home, Pill, Settings, User, Bell, FileCheck } from "lucide-react"
+import { Calendar, FileText, Home, Pill, Settings, User, Bell, FileCheck, Receipt } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -29,6 +29,11 @@ export default function PatientSidebar() {
       href: "/dashboard/patient/prescriptions",
       icon: Pill,
       title: "Đơn thuốc",
+    },
+    {
+      href: "/dashboard/patient/invoices",
+      icon: Receipt,
+      title: "Hóa đơn",
     },
     {
       href: "/profile",

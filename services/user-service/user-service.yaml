@@ -336,7 +336,9 @@ paths:
   /doctors/:
     get:
       operationId: doctors_list
-      description: ViewSet để lấy danh sách bác sĩ.
+      description: |-
+        ViewSet để lấy danh sách bác sĩ.
+        Tất cả người dùng đã xác thực đều có thể truy cập thông tin bác sĩ.
       parameters: []
       responses:
         '200':
@@ -351,7 +353,26 @@ paths:
   /doctors/{id}/:
     get:
       operationId: doctors_read
-      description: ViewSet để lấy danh sách bác sĩ.
+      description: |-
+        ViewSet để lấy danh sách bác sĩ.
+        Tất cả người dùng đã xác thực đều có thể truy cập thông tin bác sĩ.
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/DoctorProfile'
+      tags:
+      - doctors
+    parameters:
+    - name: id
+      in: path
+      required: true
+      type: string
+  /doctors/{id}/user/:
+    get:
+      operationId: doctors_get_user_info
+      description: Lấy thông tin người dùng của bác sĩ.
       parameters: []
       responses:
         '200':
@@ -847,6 +868,23 @@ paths:
       tags:
       - users
     parameters: []
+  /users/doctors/{doctor_id}/:
+    get:
+      operationId: users_doctors_read
+      description: |-
+        Lấy thông tin người dùng của bác sĩ.
+        Endpoint này được tạo để tương thích với medical-record-service.
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+      - users
+    parameters:
+    - name: doctor_id
+      in: path
+      required: true
+      type: string
   /users/me/:
     get:
       operationId: users_me

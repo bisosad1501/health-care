@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.conf import settings
+from django.http import HttpResponse
 
 logger = logging.getLogger(__name__)
 from .models import Invoice, InvoiceItem, Payment, InsuranceClaim
@@ -20,8 +21,9 @@ from .permissions import IsAdmin, IsAdminOrBillingStaff, IsPatientOwner, IsAdmin
 from .services import (
     create_invoice_from_appointment, create_invoice_from_lab_test,
     create_invoice_from_prescription, create_invoice_from_medical_record,
-    apply_insurance_to_invoice
+    create_invoice_from_encounter, apply_insurance_to_invoice
 )
+from .pdf_generator import generate_invoice_pdf
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
@@ -224,6 +226,28 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'])
+    def export_pdf(self, request, pk=None):
+        """
+        Export invoice as PDF.
+        """
+        invoice = self.get_object()
+
+        # Generate PDF
+        pdf_file = generate_invoice_pdf(invoice.id)
+
+        if not pdf_file:
+            return Response(
+                {'error': 'Failed to generate PDF'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Create response with PDF
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
+
+        return response
 
 
 class InvoiceItemViewSet(viewsets.ModelViewSet):
@@ -519,6 +543,27 @@ class InvoiceCreationViewSet(viewsets.ViewSet):
             return Response({'error': 'Medical record ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         invoice = create_invoice_from_medical_record(record_id, request.headers)
+        if not invoice:
+            return Response({'error': 'Failed to create invoice'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Apply insurance automatically if requested
+        apply_insurance = request.data.get('apply_insurance', True)
+        if apply_insurance:
+            apply_insurance_to_invoice(invoice, request.headers)
+
+        serializer = InvoiceDetailSerializer(invoice)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def from_encounter(self, request):
+        """
+        Create an invoice from an encounter.
+        """
+        encounter_id = request.data.get('encounter_id')
+        if not encounter_id:
+            return Response({'error': 'Encounter ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        invoice = create_invoice_from_encounter(encounter_id, request.headers)
         if not invoice:
             return Response({'error': 'Failed to create invoice'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

@@ -107,9 +107,15 @@ class UserService:
             dict: Thông tin bác sĩ hoặc None nếu có lỗi
         """
         try:
-            response = requests.get(f"{settings.API_GATEWAY_URL}/api/users/doctors/{doctor_id}/")
+            # Sử dụng endpoint /api/users/{doctor_id}/ để lấy thông tin bác sĩ
+            # Endpoint /api/users/doctors/{doctor_id}/ đã được cấu hình trong API Gateway để chuyển tiếp đến endpoint này
+            logger.info(f"Fetching doctor info from /api/users/{doctor_id}/")
+            response = requests.get(f"{settings.API_GATEWAY_URL}/api/users/{doctor_id}/")
+
             if response.status_code == 200:
+                logger.info(f"Successfully fetched doctor info for doctor_id: {doctor_id}")
                 return response.json()
+
             logger.error(f"Failed to fetch doctor info: {response.status_code} - {response.text}")
             return None
         except Exception as e:
@@ -128,7 +134,8 @@ class UserService:
             dict: Thông tin bệnh nhân hoặc None nếu có lỗi
         """
         try:
-            response = requests.get(f"{settings.API_GATEWAY_URL}/api/users/patients/{patient_id}/")
+            # Sử dụng endpoint /api/users/{patient_id}/ để lấy thông tin người dùng
+            response = requests.get(f"{settings.API_GATEWAY_URL}/api/users/{patient_id}/")
             if response.status_code == 200:
                 return response.json()
             logger.error(f"Failed to fetch patient info: {response.status_code} - {response.text}")
@@ -354,6 +361,101 @@ class LaboratoryService:
         except Exception as e:
             logger.error(f"Error fetching test result: {str(e)}")
             return None
+
+class BillingService:
+    """
+    Service để giao tiếp với Billing Service thông qua API Gateway.
+    """
+
+    @staticmethod
+    def create_invoice_from_encounter(encounter_data, auth_token=None):
+        """
+        Tạo hóa đơn từ cuộc gặp trong Billing Service thông qua API Gateway.
+
+        Args:
+            encounter_data (dict): Dữ liệu cuộc gặp và thông tin hóa đơn
+            auth_token (str, optional): JWT token để xác thực
+
+        Returns:
+            dict: Thông tin hóa đơn đã tạo hoặc None nếu có lỗi
+        """
+        try:
+            headers = {'Content-Type': 'application/json'}
+            if auth_token:
+                headers['Authorization'] = f'Bearer {auth_token}'
+
+            response = requests.post(
+                f"{settings.API_GATEWAY_URL}/api/billing/create-from-encounter/",
+                json={'encounter_id': encounter_data.get('encounter_id')},
+                headers=headers
+            )
+            if response.status_code in [200, 201]:
+                logger.info(f"Successfully created invoice in billing-service: {response.text}")
+                return response.json()
+            logger.error(f"Failed to create invoice: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error creating invoice: {str(e)}")
+            return None
+
+    @staticmethod
+    def get_invoice(invoice_id, auth_token=None):
+        """
+        Lấy thông tin hóa đơn từ Billing Service thông qua API Gateway.
+
+        Args:
+            invoice_id (int): ID của hóa đơn
+            auth_token (str, optional): JWT token để xác thực
+
+        Returns:
+            dict: Thông tin hóa đơn hoặc None nếu có lỗi
+        """
+        try:
+            headers = {}
+            if auth_token:
+                headers['Authorization'] = f'Bearer {auth_token}'
+
+            response = requests.get(
+                f"{settings.API_GATEWAY_URL}/api/invoices/{invoice_id}/",
+                headers=headers
+            )
+            if response.status_code == 200:
+                return response.json()
+            logger.error(f"Failed to fetch invoice: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching invoice: {str(e)}")
+            return None
+
+    @staticmethod
+    def get_invoices_by_patient(patient_id, auth_token=None):
+        """
+        Lấy danh sách hóa đơn theo ID bệnh nhân từ Billing Service.
+
+        Args:
+            patient_id (int): ID của bệnh nhân
+            auth_token (str, optional): JWT token để xác thực
+
+        Returns:
+            list: Danh sách hóa đơn hoặc [] nếu có lỗi
+        """
+        try:
+            headers = {}
+            if auth_token:
+                headers['Authorization'] = f'Bearer {auth_token}'
+
+            response = requests.get(
+                f"{settings.API_GATEWAY_URL}/api/invoices/?patient_id={patient_id}",
+                headers=headers
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('results', [])
+            logger.error(f"Failed to fetch invoices by patient: {response.status_code} - {response.text}")
+            return []
+        except Exception as e:
+            logger.error(f"Error fetching invoices by patient: {str(e)}")
+            return []
 
 class PharmacyService:
     """

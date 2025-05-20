@@ -93,6 +93,12 @@ class MedicalRecordServiceClient(ServiceClient):
         """
         return self.get(f"/api/medical-records/{record_id}/", headers=headers)
 
+    def get_encounter(self, encounter_id, headers=None):
+        """
+        Get encounter information from the Medical Record Service.
+        """
+        return self.get(f"/api/encounters/{encounter_id}/", headers=headers)
+
 
 class LaboratoryServiceClient(ServiceClient):
     """
@@ -302,6 +308,144 @@ def create_invoice_from_prescription(prescription_id, headers=None):
             service_type='pharmacy',
             prescription_id=prescription_id
         )
+
+    # Apply insurance if available
+    apply_insurance_to_invoice(invoice, headers)
+
+    return invoice
+
+
+def create_invoice_from_encounter(encounter_id, headers=None):
+    """
+    Create an invoice from an encounter.
+    """
+    from .models import Invoice, InvoiceItem
+
+    # Get encounter information
+    client = MedicalRecordServiceClient()
+    encounter = client.get_encounter(encounter_id, headers)
+
+    if not encounter:
+        logger.error(f"Could not retrieve encounter {encounter_id}")
+        return None
+
+    # Get patient information from medical record
+    medical_record = client.get_medical_record(encounter['medical_record'], headers)
+    if not medical_record:
+        logger.error(f"Could not retrieve medical record for encounter {encounter_id}")
+        return None
+
+    patient_id = medical_record['patient_id']
+
+    # Get current date if encounter_date is not available
+    from django.utils import timezone
+    current_date = timezone.now().strftime('%Y-%m-%d')
+
+    # Use encounter_date if available, otherwise use current date
+    issue_date = encounter.get('encounter_date', current_date)
+    if issue_date and isinstance(issue_date, str) and 'T' in issue_date:
+        issue_date = issue_date.split('T')[0]
+    else:
+        issue_date = current_date
+
+    # Create invoice with unique invoice number
+    from django.utils import timezone
+    timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
+    invoice = Invoice.objects.create(
+        patient_id=patient_id,
+        invoice_number=f"INV-ENC-{encounter_id}-{timestamp}",
+        status=Invoice.Status.PENDING,
+        issue_date=issue_date,
+        due_date=issue_date,  # Due same day
+        total_amount=Decimal('0'),  # Will be updated after adding items
+        discount=Decimal('0'),
+        tax=Decimal('0'),
+        final_amount=Decimal('0'),  # Will be updated after adding items
+        notes=f"Invoice for encounter on {issue_date}"
+    )
+
+    # Add items based on encounter data
+    total_amount = Decimal('0')
+
+    # Add consultation fee
+    consultation_fee = Decimal('200000')  # Default consultation fee
+    if encounter.get('doctor_id'):
+        # Get doctor information to get consultation fee
+        user_client = UserServiceClient()
+        doctor = user_client.get_doctor(encounter['doctor_id'], headers)
+        if doctor and doctor.get('consultation_fee'):
+            consultation_fee = Decimal(str(doctor['consultation_fee']))
+
+    InvoiceItem.objects.create(
+        invoice=invoice,
+        item_type=InvoiceItem.ItemType.CONSULTATION,
+        description=f"Consultation Fee",
+        quantity=1,
+        unit_price=consultation_fee,
+        total_price=consultation_fee,
+        reference_id=encounter_id,
+        service_type='encounter',
+        encounter_id=encounter_id
+    )
+
+    total_amount += consultation_fee
+
+    # Add lab tests if available
+    if 'lab_tests' in encounter and encounter['lab_tests']:
+        for lab_test in encounter['lab_tests']:
+            lab_test_fee = Decimal('300000')  # Default lab test fee
+
+            # Try to get actual lab test fee
+            lab_client = LaboratoryServiceClient()
+            test_info = lab_client.get_lab_test(lab_test['id'], headers)
+            if test_info and test_info.get('test_type'):
+                test_type = lab_client.get_test_type(test_info['test_type'], headers)
+                if test_type and test_type.get('price'):
+                    lab_test_fee = Decimal(str(test_type['price']))
+
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                item_type=InvoiceItem.ItemType.LAB_TEST,
+                description=f"Laboratory Test: {lab_test.get('test_name', 'Unknown')}",
+                quantity=1,
+                unit_price=lab_test_fee,
+                total_price=lab_test_fee,
+                reference_id=lab_test['id'],
+                service_type='laboratory',
+                lab_test_id=lab_test['id']
+            )
+
+            total_amount += lab_test_fee
+
+    # Add medications if available
+    if 'medications' in encounter and encounter['medications']:
+        for medication in encounter['medications']:
+            medication_fee = Decimal('100000')  # Default medication fee
+
+            # Try to get actual medication fee
+            pharmacy_client = PharmacyServiceClient()
+            med_info = pharmacy_client.get_medication(medication['id'], headers)
+            if med_info and med_info.get('price'):
+                medication_fee = Decimal(str(med_info['price'])) * Decimal(str(medication.get('quantity', 1)))
+
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                item_type=InvoiceItem.ItemType.MEDICATION,
+                description=f"Medication: {medication.get('medication_name', 'Unknown')}",
+                quantity=medication.get('quantity', 1),
+                unit_price=medication_fee / Decimal(str(medication.get('quantity', 1))),
+                total_price=medication_fee,
+                reference_id=medication['id'],
+                service_type='pharmacy',
+                medication_id=medication['id']
+            )
+
+            total_amount += medication_fee
+
+    # Update invoice total
+    invoice.total_amount = total_amount
+    invoice.final_amount = total_amount
+    invoice.save()
 
     # Apply insurance if available
     apply_insurance_to_invoice(invoice, headers)

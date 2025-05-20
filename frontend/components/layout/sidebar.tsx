@@ -103,6 +103,11 @@ export function AppSidebar() {
           icon: <Pill className="h-4 w-4" />,
           label: "Đơn thuốc",
         },
+        {
+          href: "/dashboard/patient/invoices",
+          icon: <Receipt className="h-4 w-4" />,
+          label: "Hóa đơn",
+        },
       ],
       doctor: [
         {

@@ -11,6 +11,7 @@ import { vi } from "date-fns/locale"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { toast } from "sonner"
 
 // Helper function để định dạng ngày
 const formatAppointmentDate = (dateString: string) => {
@@ -110,14 +111,25 @@ export default function PatientAppointmentsList() {
 
                 // Kiểm tra xem doctor có tồn tại không
                 const doctorInfo = appointment.doctor || {};
-                const doctorName = doctorInfo.first_name && doctorInfo.last_name
-                  ? `BS. ${doctorInfo.first_name} ${doctorInfo.last_name}`
-                  : `BS. (ID: ${appointment.doctor_id || 'Không xác định'})`;
+                let doctorName = "BS. Chưa xác định";
+
+                // Nếu có thông tin first_name và last_name, hiển thị tên đầy đủ
+                if (doctorInfo.first_name && doctorInfo.last_name) {
+                  doctorName = `BS. ${doctorInfo.first_name} ${doctorInfo.last_name}`;
+                }
+                // Nếu chỉ có một trong hai, hiển thị phần có sẵn
+                else if (doctorInfo.first_name || doctorInfo.last_name) {
+                  doctorName = `BS. ${doctorInfo.first_name || doctorInfo.last_name}`;
+                }
+                // Nếu không có thông tin tên, hiển thị ID với thông báo rõ ràng hơn
+                else if (appointment.doctor_id) {
+                  doctorName = `Bác sĩ #${appointment.doctor_id}`;
+                }
 
                 // Xác định trạng thái lịch hẹn
                 let statusDisplay = "Chưa xác định";
                 let statusCode = appointment.status || "UNKNOWN";
-                
+
                 switch (statusCode.toUpperCase()) {
                   case "CONFIRMED":
                     statusDisplay = "Đã xác nhận";
@@ -193,14 +205,25 @@ export default function PatientAppointmentsList() {
 
                 // Kiểm tra xem doctor có tồn tại không
                 const doctorInfo = appointment.doctor || {};
-                const doctorName = doctorInfo.first_name && doctorInfo.last_name
-                  ? `BS. ${doctorInfo.first_name} ${doctorInfo.last_name}`
-                  : `BS. (ID: ${appointment.doctor_id || 'Không xác định'})`;
+                let doctorName = "BS. Chưa xác định";
+
+                // Nếu có thông tin first_name và last_name, hiển thị tên đầy đủ
+                if (doctorInfo.first_name && doctorInfo.last_name) {
+                  doctorName = `BS. ${doctorInfo.first_name} ${doctorInfo.last_name}`;
+                }
+                // Nếu chỉ có một trong hai, hiển thị phần có sẵn
+                else if (doctorInfo.first_name || doctorInfo.last_name) {
+                  doctorName = `BS. ${doctorInfo.first_name || doctorInfo.last_name}`;
+                }
+                // Nếu không có thông tin tên, hiển thị ID với thông báo rõ ràng hơn
+                else if (appointment.doctor_id) {
+                  doctorName = `Bác sĩ #${appointment.doctor_id}`;
+                }
 
                 // Xác định trạng thái lịch hẹn
                 let statusDisplay = "Chưa xác định";
                 let statusCode = appointment.status || "UNKNOWN";
-                
+
                 switch (statusCode.toUpperCase()) {
                   case "CONFIRMED":
                     statusDisplay = "Đã xác nhận";
@@ -289,43 +312,50 @@ export default function PatientAppointmentsList() {
 
   const handleCancelAppointment = async (appointmentId: number) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy lịch hẹn này không?')) return;
-    
+
     try {
       await AppointmentService.cancelAppointment(appointmentId, 'Hủy bởi bệnh nhân');
-      
+
       // Cập nhật trạng thái của lịch hẹn trong danh sách
       setAppointments(prev => prev.map(app =>
         app.id === appointmentId ? {...app, status: 'Đã hủy', statusCode: 'CANCELLED'} : app
       ));
-      
+
       // Hiển thị thông báo thành công
-      alert('Hủy lịch hẹn thành công!');
+      toast({
+        title: "Thành công",
+        description: "Hủy lịch hẹn thành công!",
+        duration: 3000,
+      });
     } catch (error: any) {
       console.error('Lỗi khi hủy lịch hẹn:', error);
-      if (error.response?.data?.error === 'Cannot cancel appointment within 24 hours') {
-        alert('Không thể hủy lịch hẹn trong vòng 24 giờ trước giờ hẹn.');
-      } else {
-        alert('Không thể hủy lịch hẹn. ' + (error.message || 'Vui lòng thử lại sau.'));
-      }
+
+      // Hiển thị thông báo lỗi
+      toast({
+        title: "Lỗi",
+        description: error.message || 'Không thể hủy lịch hẹn. Vui lòng thử lại sau.',
+        variant: "destructive",
+        duration: 5000,
+      });
     }
   }
 
   // Kiểm tra xem lịch hẹn có thể hủy được không (không trong vòng 24h trước giờ hẹn)
   const canCancel = (appointment: FormattedAppointment) => {
     if (appointment.statusCode !== "CONFIRMED" && appointment.statusCode !== "PENDING") return false;
-    
+
     // Nếu là hôm nay, kiểm tra thời gian
     if (appointment.date === "Hôm nay") {
       const now = new Date();
       const [hours, minutes] = appointment.time.split(':').map(Number);
       const appointmentTime = new Date();
       appointmentTime.setHours(hours, minutes, 0);
-      
+
       // Nếu còn ít hơn 24 giờ, không cho phép hủy
       const diffHours = (appointmentTime.getTime() - now.getTime()) / (1000 * 60 * 60);
       if (diffHours <= 24) return false;
     }
-    
+
     return true;
   }
 
@@ -379,7 +409,7 @@ export default function PatientAppointmentsList() {
         <h3 className="mt-2 text-lg font-medium">Không có lịch hẹn nào</h3>
         <p className="mt-1 text-sm text-muted-foreground">Bạn chưa có lịch hẹn khám bệnh nào.</p>
         <Button className="mt-4" asChild>
-          <a href="/dashboard/patient/appointments/new">Đặt lịch hẹn ngay</a>
+          <a href="/dashboard/patient/appointments/simple-booking">Đặt lịch hẹn ngay</a>
         </Button>
       </div>
     )
@@ -429,7 +459,7 @@ export default function PatientAppointmentsList() {
                   <span>{appointment.location}</span>
                 </div>
               </div>
-              
+
               {appointment.reason_text && (
                 <div className="mt-2 text-sm">
                   <p className="font-medium text-muted-foreground">Lý do khám:</p>
@@ -471,10 +501,10 @@ export default function PatientAppointmentsList() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div 
+                        <div
                           className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
-                            appointment.is_paid 
-                              ? "bg-green-50 text-green-700" 
+                            appointment.is_paid
+                              ? "bg-green-50 text-green-700"
                               : "bg-yellow-50 text-yellow-700"
                           }`}
                         >
@@ -502,24 +532,24 @@ export default function PatientAppointmentsList() {
           </div>
           <div className="mt-4 flex flex-col items-end gap-2 md:mt-0">
             <StatusBadge status={appointment.statusCode} />
-            
+
             <div className="flex items-center gap-2 mt-2">
               {appointment.statusCode === "CONFIRMED" && (
                 <Button variant="outline" size="sm" asChild>
                   <a href={`/dashboard/patient/appointments/${appointment.id}/reschedule`}>Đổi lịch</a>
                 </Button>
               )}
-              
+
               {canCancel(appointment) && (
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
+                <Button
+                  variant="destructive"
+                  size="sm"
                   onClick={() => handleCancelAppointment(appointment.id)}
                 >
                   Hủy
                 </Button>
               )}
-              
+
               <Button variant="ghost" size="icon" asChild>
                 <a href={`/dashboard/patient/appointments/${appointment.id}`}>
                   <MoreHorizontal className="h-4 w-4" />

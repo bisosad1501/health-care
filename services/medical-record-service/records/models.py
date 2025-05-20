@@ -28,6 +28,21 @@ class Encounter(models.Model):
         ('FOLLOWUP', 'Follow-up'),
         ('TELECONSULTATION', 'Teleconsultation'),
     ], default='OUTPATIENT')
+    status = models.CharField(max_length=20, choices=[
+        ('SCHEDULED', 'Scheduled'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+        ('NO_SHOW', 'No Show')
+    ], default='SCHEDULED')
+    billing_status = models.CharField(max_length=20, choices=[
+        ('NOT_BILLED', 'Not Billed'),
+        ('BILLED', 'Billed'),
+        ('PAID', 'Paid'),
+        ('PARTIALLY_PAID', 'Partially Paid'),
+        ('WAIVED', 'Waived')
+    ], default='NOT_BILLED')
+    invoice_id = models.IntegerField(help_text="ID của hóa đơn trong billing-service", null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Hóa đơn #{{ invoice.invoice_number }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+        }
+        .header {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .logo {
+            width: 100px;
+            height: auto;
+        }
+        .invoice-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .invoice-details {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .invoice-details td {
+            padding: 5px;
+        }
+        .invoice-details .label {
+            font-weight: bold;
+            width: 150px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .items-table th {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .items-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .items-table .amount {
+            text-align: right;
+        }
+        .summary-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .summary-table td {
+            padding: 5px;
+        }
+        .summary-table .label {
+            font-weight: bold;
+            width: 150px;
+        }
+        .summary-table .amount {
+            text-align: right;
+            width: 150px;
+        }
+        .total-row {
+            font-weight: bold;
+            font-size: 14px;
+            background-color: #f5f5f5;
+        }
+        .payment-status {
+            font-size: 14px;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .status-paid {
+            color: #27ae60;
+            background-color: #e8f5e9;
+        }
+        .status-pending {
+            color: #f39c12;
+            background-color: #fff8e1;
+        }
+        .status-overdue {
+            color: #e74c3c;
+            background-color: #ffebee;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #777;
+        }
+        .barcode {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <table class="header">
+        <tr>
+            <td width="50%">
+                <div class="invoice-title">HÓA ĐƠN</div>
+                <div>{{ hospital_name }}</div>
+                <div>{{ hospital_address }}</div>
+                <div>{{ hospital_phone }}</div>
+                <div>{{ hospital_email }}</div>
+            </td>
+            <td width="50%" style="text-align: right;">
+                <div style="font-size: 16px; font-weight: bold;">Số hóa đơn: {{ invoice.invoice_number }}</div>
+                <div>Ngày lập: {{ issue_date }}</div>
+                <div>Ngày đến hạn: {{ due_date }}</div>
+                <div class="payment-status {% if invoice.status == 'PAID' %}status-paid{% elif invoice.status == 'OVERDUE' %}status-overdue{% else %}status-pending{% endif %}">
+                    {% if invoice.status == 'PAID' %}
+                        ĐÃ THANH TOÁN
+                    {% elif invoice.status == 'PARTIALLY_PAID' %}
+                        THANH TOÁN MỘT PHẦN
+                    {% elif invoice.status == 'OVERDUE' %}
+                        QUÁ HẠN
+                    {% else %}
+                        CHƯA THANH TOÁN
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Patient Information -->
+    <div class="section-title">THÔNG TIN BỆNH NHÂN</div>
+    <table class="invoice-details">
+        <tr>
+            <td class="label">Mã bệnh nhân:</td>
+            <td>{{ invoice.patient_id }}</td>
+        </tr>
+    </table>
+
+    <!-- Invoice Items -->
+    <div class="section-title">CHI TIẾT DỊCH VỤ</div>
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th width="5%">STT</th>
+                <th width="50%">Mô tả</th>
+                <th width="10%">Số lượng</th>
+                <th width="15%">Đơn giá</th>
+                <th width="20%">Thành tiền</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.description }}</td>
+                <td>{{ item.quantity }}</td>
+                <td class="amount">{{ item.unit_price|floatformat:0|intcomma }} VND</td>
+                <td class="amount">{{ item.total_price|floatformat:0|intcomma }} VND</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Summary -->
+    <div class="section-title">TỔNG KẾT</div>
+    <table class="summary-table">
+        <tr>
+            <td class="label">Tổng tiền dịch vụ:</td>
+            <td class="amount">{{ total_amount }}</td>
+        </tr>
+        {% if invoice.discount > 0 %}
+        <tr>
+            <td class="label">Giảm giá:</td>
+            <td class="amount">{{ discount }}</td>
+        </tr>
+        {% endif %}
+        {% if invoice.tax > 0 %}
+        <tr>
+            <td class="label">Thuế:</td>
+            <td class="amount">{{ tax }}</td>
+        </tr>
+        {% endif %}
+        <tr class="total-row">
+            <td class="label">Tổng cộng:</td>
+            <td class="amount">{{ final_amount }}</td>
+        </tr>
+        <tr>
+            <td class="label">Đã thanh toán:</td>
+            <td class="amount">{{ total_paid }}</td>
+        </tr>
+        <tr class="total-row">
+            <td class="label">Còn lại:</td>
+            <td class="amount">{{ balance }}</td>
+        </tr>
+    </table>
+
+    <!-- Payment Information -->
+    {% if payments %}
+    <div class="section-title">LỊCH SỬ THANH TOÁN</div>
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th width="5%">STT</th>
+                <th width="20%">Ngày thanh toán</th>
+                <th width="20%">Phương thức</th>
+                <th width="35%">Ghi chú</th>
+                <th width="20%">Số tiền</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payments %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ payment.payment_date|date:"d/m/Y" }}</td>
+                <td>{{ payment.get_payment_method_display }}</td>
+                <td>{{ payment.notes }}</td>
+                <td class="amount">{{ payment.amount|floatformat:0|intcomma }} VND</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Insurance Claims -->
+    {% if insurance_claims %}
+    <div class="section-title">THÔNG TIN BẢO HIỂM</div>
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th width="5%">STT</th>
+                <th width="20%">Số yêu cầu</th>
+                <th width="15%">Ngày gửi</th>
+                <th width="15%">Trạng thái</th>
+                <th width="20%">Số tiền yêu cầu</th>
+                <th width="25%">Số tiền được duyệt</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for claim in insurance_claims %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ claim.claim_number }}</td>
+                <td>{{ claim.submission_date|date:"d/m/Y" }}</td>
+                <td>{{ claim.get_status_display }}</td>
+                <td class="amount">{{ claim.claim_amount|floatformat:0|intcomma }} VND</td>
+                <td class="amount">{% if claim.approved_amount %}{{ claim.approved_amount|floatformat:0|intcomma }} VND{% else %}-{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Notes -->
+    {% if invoice.notes %}
+    <div class="section-title">GHI CHÚ</div>
+    <p>{{ invoice.notes }}</p>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>Hóa đơn này được tạo tự động bởi hệ thống. Vui lòng liên hệ {{ hospital_phone }} nếu có thắc mắc.</p>
+        <p>{{ hospital_name }} - {{ hospital_address }} - {{ hospital_phone }}</p>
+    </div>
+</body>
+</html>

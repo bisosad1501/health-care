@@ -164,6 +164,60 @@ const PharmacyService = {
     const response = await apiClient.post("/api/dispensing-items/", data)
     return response.data
   },
+
+  // Lấy đơn thuốc của bệnh nhân hiện tại
+  async getPatientPrescriptions(): Promise<PrescriptionWithDetails[]> {
+    try {
+      // Lấy thông tin người dùng từ localStorage
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        console.error("User information not found in localStorage");
+        return [];
+      }
+
+      const user = JSON.parse(userStr);
+      const patientId = user.id;
+
+      // Gọi API để lấy đơn thuốc của bệnh nhân
+      console.log(`Fetching prescriptions for patient ${patientId}`);
+      const response = await apiClient.get(`/api/prescriptions/?patient_id=${patientId}`);
+      console.log("Prescriptions API response:", response.data);
+
+      // Kiểm tra dữ liệu trả về có hợp lệ không
+      if (!response.data) {
+        console.error("API response data is null or undefined");
+        return [];
+      }
+
+      // Xử lý dữ liệu trả về
+      let prescriptions: PrescriptionWithDetails[] = [];
+
+      // API trả về dữ liệu dạng phân trang (pagination)
+      if (response.data && response.data.results) {
+        prescriptions = response.data.results;
+      }
+      // Nếu không có trường results, trả về dữ liệu nguyên bản
+      else if (Array.isArray(response.data)) {
+        prescriptions = response.data;
+      }
+
+      return prescriptions;
+    } catch (error) {
+      console.error("Error fetching patient prescriptions:", error);
+      return [];
+    }
+  },
+
+  // Yêu cầu cấp lại thuốc
+  async requestRefill(prescriptionId: number): Promise<any> {
+    try {
+      const response = await apiClient.post(`/api/prescriptions/${prescriptionId}/refill/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error requesting refill for prescription ${prescriptionId}:`, error);
+      throw error;
+    }
+  },
 }
 
 export default PharmacyService

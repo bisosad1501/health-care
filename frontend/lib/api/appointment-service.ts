@@ -153,16 +153,27 @@ const AppointmentService = {
     try {
       console.log("Creating appointment with data:", data);
 
-      // Chuẩn bị dữ liệu gửi đi - chỉ cần time_slot_id theo API mới
+      // Chuẩn bị dữ liệu gửi đi theo đúng cấu trúc API backend
       const appointmentData: any = {
         patient_id: data.patient_id,
-        time_slot_id: parseInt(data.time_slot_id?.toString() || data.time_slot?.toString() || '0'), // Đảm bảo time_slot_id là số
+        // Sử dụng time_slot_id hoặc time_slot tùy theo API backend yêu cầu
+        time_slot_id: data.time_slot_id || data.time_slot,
         reason_text: data.reason_text || "",
         appointment_type: data.appointment_type || "REGULAR",
         priority: data.priority !== undefined ? data.priority : 0,
         notes: data.notes || "",
         created_by: data.created_by || data.patient_id
       };
+
+      // Thêm doctor_id nếu có
+      if (data.doctor_id) {
+        appointmentData.doctor_id = data.doctor_id;
+      }
+
+      // Đảm bảo time_slot_id là số
+      if (typeof appointmentData.time_slot_id === 'string') {
+        appointmentData.time_slot_id = parseInt(appointmentData.time_slot_id);
+      }
 
       // Nếu có reason_category, thêm vào dữ liệu
       if (data.reason_category) {
@@ -188,21 +199,79 @@ const AppointmentService = {
       return response.data;
     } catch (error: any) {
       console.error("Error creating appointment:", error.response?.status, error.response?.data);
+
+      // Log chi tiết hơn về lỗi
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+        console.error("Response headers:", error.response.headers);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Error message:", error.message);
+      }
+
       throw error;
     }
   },
 
   async cancelAppointment(id: number, notes: string): Promise<Appointment> {
-    const response = await apiClient.post(`/api/appointments/${id}/cancel/`, { notes })
-    return response.data
+    try {
+      console.log(`Cancelling appointment ${id} with notes: ${notes}`);
+      const response = await apiClient.post(`/api/appointments/${id}/cancel/`, { notes });
+      console.log("Cancel appointment response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error cancelling appointment ${id}:`, error);
+
+      // Log chi tiết hơn về lỗi
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+
+        // Kiểm tra các lỗi cụ thể
+        if (error.response.status === 400 && error.response.data.error === 'Cannot cancel appointment within 24 hours') {
+          throw new Error('Không thể hủy lịch hẹn trong vòng 24 giờ trước giờ hẹn.');
+        } else if (error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+      }
+
+      // Nếu không có lỗi cụ thể, ném lỗi chung
+      throw error;
+    }
   },
 
   async rescheduleAppointment(id: number, timeSlotId: number, notes: string): Promise<Appointment> {
-    const response = await apiClient.post(`/api/appointments/${id}/reschedule/`, {
-      time_slot_id: timeSlotId,
-      notes
-    })
-    return response.data
+    try {
+      console.log(`Rescheduling appointment ${id} to time slot ${timeSlotId} with notes: ${notes}`);
+      const response = await apiClient.post(`/api/appointments/${id}/reschedule/`, {
+        time_slot_id: timeSlotId,
+        notes
+      });
+      console.log("Reschedule appointment response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error rescheduling appointment ${id}:`, error);
+
+      // Log chi tiết hơn về lỗi
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+
+        // Kiểm tra các lỗi cụ thể
+        if (error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        } else if (error.response.data.time_slot_id) {
+          throw new Error(`Lỗi khung giờ: ${error.response.data.time_slot_id}`);
+        } else if (error.response.data.error) {
+          throw new Error(error.response.data.error);
+        }
+      }
+
+      // Nếu không có lỗi cụ thể, ném lỗi chung
+      throw error;
+    }
   },
 
   async getAppointmentById(id: number): Promise<AppointmentWithDetails> {
@@ -232,9 +301,19 @@ const AppointmentService = {
 
   async getPatientAppointments(): Promise<AppointmentWithDetails[]> {
     try {
-      // Sử dụng đường dẫn đã được xác định là hoạt động
-      console.log("Calling appointments API");
-      const response = await apiClient.get("/api/appointments/");
+      // Lấy thông tin người dùng từ localStorage
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        console.error("User information not found in localStorage");
+        return [];
+      }
+
+      const user = JSON.parse(userStr);
+      const patientId = user.id;
+
+      // Sử dụng đường dẫn API với filter theo patient_id
+      console.log(`Calling appointments API for patient ${patientId}`);
+      const response = await apiClient.get(`/api/appointments/?patient_id=${patientId}`);
       console.log("Appointments API response:", response.data);
 
       // Kiểm tra dữ liệu trả về có hợp lệ không
@@ -243,45 +322,143 @@ const AppointmentService = {
         return [];
       }
 
+      // Xử lý dữ liệu trả về
+      let appointments: any[] = [];
+
       // API trả về dữ liệu dạng phân trang (pagination)
       if (response.data && response.data.results) {
-        // Kiểm tra và chuẩn hóa dữ liệu
-        return response.data.results.map((appointment: any) => {
-          // Đảm bảo doctor luôn là một đối tượng
-          if (!appointment.doctor) {
-            appointment.doctor = {
-              id: appointment.doctor_id || null,
-              first_name: "",
-              last_name: "",
-              email: "",
-              specialty: ""
-            };
-          }
-          return appointment;
-        });
+        appointments = response.data.results;
       }
-
       // Nếu không có trường results, trả về dữ liệu nguyên bản
-      // Đảm bảo dữ liệu trả về là một mảng
-      if (Array.isArray(response.data)) {
-        return response.data.map((appointment: any) => {
-          if (!appointment.doctor) {
-            appointment.doctor = {
-              id: appointment.doctor_id || null,
-              first_name: "",
-              last_name: "",
-              email: "",
-              specialty: ""
-            };
-          }
-          return appointment;
-        });
+      else if (Array.isArray(response.data)) {
+        appointments = response.data;
+      }
+      // Nếu là một đối tượng đơn lẻ
+      else if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
+        appointments = [response.data];
+      }
+      else {
+        console.error("API response data is not in expected format", response.data);
+        return [];
       }
 
-      console.error("API response data is not in expected format", response.data);
-      return [];
+      // Lấy danh sách doctor_id từ các lịch hẹn
+      const doctorIds = appointments
+        .map(appointment => appointment.doctor_id)
+        .filter((id, index, self) => id && self.indexOf(id) === index); // Lọc các ID duy nhất và loại bỏ null/undefined
+
+      console.log("Doctor IDs from appointments:", doctorIds);
+
+      // Lấy thông tin chi tiết của các bác sĩ
+      let doctorsMap: Record<number, any> = {};
+
+      if (doctorIds.length > 0) {
+        try {
+          // Lấy thông tin người dùng của bác sĩ
+          const usersResponse = await apiClient.get('/api/users/');
+          console.log("Users API response:", usersResponse.data);
+
+          if (Array.isArray(usersResponse.data)) {
+            // Tạo map từ ID người dùng đến thông tin người dùng
+            const userMap: Record<number, any> = {};
+            usersResponse.data.forEach(user => {
+              if (user.id) {
+                userMap[user.id] = user;
+              }
+            });
+
+            // Lấy danh sách tất cả bác sĩ
+            const doctorsResponse = await apiClient.get('/api/doctors/');
+            console.log("Doctors API response:", doctorsResponse.data);
+
+            if (Array.isArray(doctorsResponse.data)) {
+              // Tạo map từ ID bác sĩ đến thông tin chi tiết
+              doctorsResponse.data.forEach(doctor => {
+                if (doctor.id) {
+                  // Lấy thông tin người dùng tương ứng
+                  const user = userMap[doctor.user] || {};
+
+                  doctorsMap[doctor.id] = {
+                    ...doctor,
+                    first_name: user.first_name || "",
+                    last_name: user.last_name || "",
+                    email: user.email || "",
+                    specialty: doctor.specialization || ""
+                  };
+                }
+              });
+            }
+
+            // Thêm các bác sĩ không có trong doctorsResponse nhưng có trong userResponse
+            usersResponse.data.forEach(user => {
+              if (user.role === 'DOCTOR' && user.id && doctorIds.includes(user.id) && !doctorsMap[user.id]) {
+                doctorsMap[user.id] = {
+                  id: user.id,
+                  first_name: user.first_name || "",
+                  last_name: user.last_name || "",
+                  email: user.email || "",
+                  specialty: user.doctor_profile?.specialization || ""
+                };
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching doctors information:", error);
+        }
+      }
+
+      console.log("Doctors map:", doctorsMap);
+
+      // Chuẩn hóa dữ liệu
+      return appointments.map((appointment: any) => {
+        // Lấy thông tin bác sĩ từ map nếu có
+        let doctorInfo = appointment.doctor || {};
+
+        if (appointment.doctor_id && doctorsMap[appointment.doctor_id]) {
+          doctorInfo = {
+            ...doctorInfo,
+            id: appointment.doctor_id,
+            first_name: doctorsMap[appointment.doctor_id].first_name || "",
+            last_name: doctorsMap[appointment.doctor_id].last_name || "",
+            email: doctorsMap[appointment.doctor_id].email || "",
+            specialty: doctorsMap[appointment.doctor_id].specialization || doctorsMap[appointment.doctor_id].specialty || ""
+          };
+        } else if (!appointment.doctor) {
+          // Nếu không có thông tin bác sĩ, tạo một đối tượng mặc định
+          doctorInfo = {
+            id: appointment.doctor_id || null,
+            first_name: "",
+            last_name: "",
+            email: "",
+            specialty: ""
+          };
+        }
+
+        // Đảm bảo các trường cần thiết luôn tồn tại
+        return {
+          ...appointment,
+          appointment_date: appointment.appointment_date || appointment.date || new Date().toISOString().split('T')[0],
+          start_time: appointment.start_time || "00:00:00",
+          end_time: appointment.end_time || "00:30:00",
+          status: appointment.status || "PENDING",
+          location: appointment.location || "Chưa xác định",
+          reason_text: appointment.reason_text || "",
+          appointment_type: appointment.appointment_type || "REGULAR",
+          doctor: doctorInfo
+        };
+      });
     } catch (error: any) {
-      console.error("Error getting patient appointments:", error.response?.status, error.response?.data);
+      console.error("Error getting patient appointments:", error);
+
+      // Log chi tiết hơn về lỗi
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Error message:", error.message);
+      }
 
       // Trả về mảng rỗng để hiển thị thông báo không có cuộc hẹn
       return [];
@@ -300,41 +477,98 @@ const AppointmentService = {
         return [];
       }
 
+      // Xử lý dữ liệu trả về
+      let appointments: any[] = [];
+
       // API trả về dữ liệu dạng phân trang (pagination)
       if (response.data && response.data.results) {
-        // Kiểm tra và chuẩn hóa dữ liệu
-        return response.data.results.map((appointment: any) => {
-          // Đảm bảo patient luôn là một đối tượng
-          if (!appointment.patient) {
-            appointment.patient = {
-              id: appointment.patient_id || null,
-              first_name: "",
-              last_name: "",
-              email: ""
-            };
-          }
-          return appointment;
-        });
+        appointments = response.data.results;
       }
-
       // Nếu không có trường results, trả về dữ liệu nguyên bản
-      // Đảm bảo dữ liệu trả về là một mảng
-      if (Array.isArray(response.data)) {
-        return response.data.map((appointment: any) => {
-          if (!appointment.patient) {
-            appointment.patient = {
-              id: appointment.patient_id || null,
-              first_name: "",
-              last_name: "",
-              email: ""
-            };
-          }
-          return appointment;
-        });
+      else if (Array.isArray(response.data)) {
+        appointments = response.data;
+      }
+      // Nếu là một đối tượng đơn lẻ
+      else if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
+        appointments = [response.data];
+      }
+      else {
+        console.error("API response data is not in expected format", response.data);
+        return [];
       }
 
-      console.error("API response data is not in expected format", response.data);
-      return [];
+      // Lấy danh sách patient_id từ các lịch hẹn
+      const patientIds = appointments
+        .map(appointment => appointment.patient_id)
+        .filter((id, index, self) => id && self.indexOf(id) === index); // Lọc các ID duy nhất và loại bỏ null/undefined
+
+      console.log("Patient IDs from appointments:", patientIds);
+
+      // Lấy thông tin chi tiết của các bệnh nhân
+      let patientsMap: Record<number, any> = {};
+
+      if (patientIds.length > 0) {
+        try {
+          // Lấy thông tin người dùng
+          const usersResponse = await apiClient.get('/api/users/');
+          console.log("Users API response:", usersResponse.data);
+
+          if (Array.isArray(usersResponse.data)) {
+            // Lọc người dùng là bệnh nhân và có ID trong danh sách patientIds
+            usersResponse.data.forEach(user => {
+              if (user.role === 'PATIENT' && user.id && patientIds.includes(user.id)) {
+                patientsMap[user.id] = {
+                  id: user.id,
+                  first_name: user.first_name || "",
+                  last_name: user.last_name || "",
+                  email: user.email || ""
+                };
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching patients information:", error);
+        }
+      }
+
+      console.log("Patients map:", patientsMap);
+
+      // Chuẩn hóa dữ liệu
+      return appointments.map((appointment: any) => {
+        // Lấy thông tin bệnh nhân từ map nếu có
+        let patientInfo = appointment.patient || {};
+
+        if (appointment.patient_id && patientsMap[appointment.patient_id]) {
+          patientInfo = {
+            ...patientInfo,
+            id: appointment.patient_id,
+            first_name: patientsMap[appointment.patient_id].first_name || "",
+            last_name: patientsMap[appointment.patient_id].last_name || "",
+            email: patientsMap[appointment.patient_id].email || ""
+          };
+        } else if (!appointment.patient) {
+          // Nếu không có thông tin bệnh nhân, tạo một đối tượng mặc định
+          patientInfo = {
+            id: appointment.patient_id || null,
+            first_name: "",
+            last_name: "",
+            email: ""
+          };
+        }
+
+        // Đảm bảo các trường cần thiết luôn tồn tại
+        return {
+          ...appointment,
+          appointment_date: appointment.appointment_date || appointment.date || new Date().toISOString().split('T')[0],
+          start_time: appointment.start_time || "00:00:00",
+          end_time: appointment.end_time || "00:30:00",
+          status: appointment.status || "PENDING",
+          location: appointment.location || "Chưa xác định",
+          reason_text: appointment.reason_text || "",
+          appointment_type: appointment.appointment_type || "REGULAR",
+          patient: patientInfo
+        };
+      });
     } catch (error: any) {
       console.error("Error getting doctor appointments:", error.response?.status, error.response?.data);
 
@@ -378,23 +612,23 @@ const AppointmentService = {
   },
 
   // Time slots
-  async getAvailableTimeSlots(doctorId: number, startDate: string, endDate: string, filters: any = {}): Promise<TimeSlot[]> {
+  async getAvailableTimeSlots(doctorId: number, date: string, endDate: string = "", filters: any = {}): Promise<TimeSlot[]> {
     try {
       // Xây dựng query string từ các filter
       let queryParams = `doctor_id=${doctorId}&is_available=true`;
 
       // Thêm date nếu có
-      if (startDate) {
-        queryParams += `&date=${startDate}`;
+      if (date) {
+        queryParams += `&date=${date}`;
       }
 
       // Thêm các filter khác nếu có
       if (filters.specialty) {
-        queryParams += `&specialty=${filters.specialty}`;
+        queryParams += `&specialty=${encodeURIComponent(filters.specialty)}`;
       }
 
       if (filters.department) {
-        queryParams += `&department=${filters.department}`;
+        queryParams += `&department=${encodeURIComponent(filters.department)}`;
       }
 
       if (filters.location) {
@@ -410,15 +644,33 @@ const AppointmentService = {
 
       console.log("Time slots API response:", response.data);
 
-      // API trả về dữ liệu dạng phân trang (pagination)
-      if (response.data && response.data.results) {
+      // Kiểm tra cấu trúc dữ liệu trả về
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results && Array.isArray(response.data.results)) {
+        // API trả về dữ liệu dạng phân trang (pagination)
         return response.data.results;
+      } else if (response.data && typeof response.data === 'object') {
+        // Nếu API trả về một đối tượng khác, thử chuyển đổi thành mảng
+        console.warn("API returned unexpected format, attempting to convert:", response.data);
+        return [response.data];
       }
 
-      // Nếu không có trường results, trả về dữ liệu nguyên bản
-      return response.data;
+      console.warn("No time slots available with the current filters");
+      return [];
     } catch (error: any) {
       console.error("Error getting available time slots:", error.response?.status, error.response?.data);
+
+      // Log chi tiết hơn về lỗi
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Error message:", error.message);
+      }
+
       // Trả về mảng rỗng khi có lỗi để hiển thị thông báo phù hợp cho người dùng
       return [];
     }
@@ -645,12 +897,27 @@ const AppointmentService = {
       } else if (response.data && response.data.results && Array.isArray(response.data.results)) {
         // Nếu API trả về dạng paging
         return response.data.results;
+      } else if (response.data && typeof response.data === 'object') {
+        // Nếu API trả về một đối tượng khác, thử chuyển đổi thành mảng
+        console.warn(`Unexpected response format for time slots on ${date}, attempting to convert:`, response.data);
+        return [response.data];
       } else {
         console.warn(`Unexpected response format for time slots on ${date}:`, response.data);
         return [];
       }
     } catch (error: any) {
       console.error(`Error getting time slots for date ${date}:`, error.response?.status, error.response?.data);
+
+      // Log chi tiết hơn về lỗi
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Error message:", error.message);
+      }
+
       return [];
     }
   },
@@ -728,97 +995,203 @@ const AppointmentService = {
   // Lấy danh sách bác sĩ có lịch trống
   async getAvailableDoctors(startDate: string, endDate: string, filters: any = {}): Promise<any[]> {
     try {
-      // Xây dựng query string từ các filter
-      let queryParams = `start_date=${startDate}&end_date=${endDate}`;
+      // Vì API /api/doctors/available/ không tồn tại, chúng ta sẽ sử dụng API /api/doctors/ và lọc dữ liệu
+      console.log(`Fetching doctors with filters:`, filters);
+      const response = await apiClient.get(`/api/doctors/`);
 
-      // Thêm các filter khác nếu có
-      if (filters.specialty) {
-        queryParams += `&specialty=${encodeURIComponent(filters.specialty)}`;
+      console.log("Doctors API response:", response.data);
+
+      // Kiểm tra cấu trúc dữ liệu trả về
+      let doctors = [];
+      if (response.data && Array.isArray(response.data)) {
+        doctors = response.data;
+      } else if (response.data && response.data.results && Array.isArray(response.data.results)) {
+        doctors = response.data.results;
+      } else if (response.data && typeof response.data === 'object') {
+        // Nếu API trả về một đối tượng khác, thử chuyển đổi thành mảng
+        console.warn("API returned unexpected format, attempting to convert:", response.data);
+        doctors = [response.data];
       }
 
-      if (filters.department) {
-        queryParams += `&department=${encodeURIComponent(filters.department)}`;
+      // Tạo mảng các ngày cần kiểm tra
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      const dateRange: string[] = [];
+
+      // Thêm startDate vào mảng
+      dateRange.push(startDate);
+
+      // Thêm các ngày giữa startDate và endDate vào mảng
+      let currentDate = new Date(startDateObj);
+      currentDate.setDate(currentDate.getDate() + 1);
+
+      while (currentDate <= endDateObj) {
+        const formattedDate = currentDate.toISOString().split('T')[0];
+        dateRange.push(formattedDate);
+        currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      console.log(`Fetching available doctors with query: ${queryParams}`);
-      const response = await apiClient.get(`/api/doctors/available/?${queryParams}`);
+      console.log(`Checking availability for date range:`, dateRange);
 
-      console.log("Available doctors API response:", response.data);
+      // Sau khi lấy danh sách bác sĩ, chúng ta sẽ lấy thông tin khung giờ trống cho mỗi bác sĩ
+      const doctorsWithAvailability = await Promise.all(
+        doctors.map(async (doctor: any) => {
+          try {
+            // Lấy khung giờ trống cho bác sĩ cho mỗi ngày trong khoảng thời gian
+            let allTimeSlots: any[] = [];
+            let allAvailableDates: string[] = [];
 
-      // Kiểm tra xem có dữ liệu trả về không
-      if (!response.data || (Array.isArray(response.data) && response.data.length === 0)) {
-        console.log("No doctors available with the current filters");
+            // Kiểm tra từng ngày trong khoảng thời gian
+            for (const date of dateRange) {
+              try {
+                const timeSlotsForDate = await this.getTimeSlotsForDate(doctor.id, date);
 
-        // Tạo dữ liệu mẫu cho bác sĩ để test
-        return [
-          {
-            id: 1,
-            name: "Nguyễn Văn A",
-            specialty: "Tim mạch",
-            specialization: "Tim mạch",
-            department: filters.department || "1",
-            available_dates: [
-              startDate,
-              endDate
-            ]
-          },
-          {
-            id: 2,
-            name: "Trần Thị B",
-            specialty: "Thần kinh",
-            specialization: "Thần kinh",
-            department: filters.department || "1",
-            available_dates: [
-              startDate,
-              endDate
-            ]
+                // Lọc các khung giờ còn trống
+                const availableTimeSlotsForDate = timeSlotsForDate.filter((slot: any) =>
+                  slot.is_available === true ||
+                  slot.status === "AVAILABLE" ||
+                  slot.status_name === "Còn trống"
+                );
+
+                console.log(`Tìm thấy ${availableTimeSlotsForDate.length} khung giờ trống cho bác sĩ ${doctor.id} vào ngày ${date}`);
+
+                // Nếu có khung giờ trống, thêm ngày vào danh sách ngày có lịch trống
+                if (availableTimeSlotsForDate.length > 0) {
+                  allAvailableDates.push(date);
+                  allTimeSlots = [...allTimeSlots, ...availableTimeSlotsForDate];
+                }
+              } catch (dateError) {
+                console.error(`Error getting time slots for doctor ${doctor.id} on date ${date}:`, dateError);
+                // Tiếp tục kiểm tra các ngày khác
+              }
+            }
+
+            // Xác định khoa của bác sĩ
+            let department = doctor.department;
+
+            // Nếu có khung giờ, lấy khoa từ khung giờ đầu tiên
+            if (allTimeSlots.length > 0 && allTimeSlots[0].department) {
+              department = allTimeSlots[0].department;
+            }
+
+            // Thêm thông tin khung giờ trống vào thông tin bác sĩ
+            return {
+              ...doctor,
+              available_dates: allAvailableDates,
+              available_slots_count: allTimeSlots.length,
+              // Thêm các thông tin khác nếu cần
+              name: doctor.user ? `${doctor.user.first_name} ${doctor.user.last_name}` :
+                    (doctor.first_name && doctor.last_name ? `${doctor.first_name} ${doctor.last_name}` :
+                    `Bác sĩ (ID: ${doctor.id})`),
+              specialty: doctor.specialization || doctor.specialty || "Chưa cập nhật",
+              department: department || "Chưa cập nhật"
+            };
+          } catch (error) {
+            console.error(`Error getting time slots for doctor ${doctor.id}:`, error);
+            return {
+              ...doctor,
+              available_dates: [],
+              available_slots_count: 0,
+              name: doctor.user ? `${doctor.user.first_name} ${doctor.user.last_name}` :
+                    (doctor.first_name && doctor.last_name ? `${doctor.first_name} ${doctor.last_name}` :
+                    `Bác sĩ (ID: ${doctor.id})`),
+              specialty: doctor.specialization || doctor.specialty || "Chưa cập nhật",
+              department: doctor.department || "Chưa cập nhật"
+            };
           }
-        ];
+        })
+      );
+
+      // Lọc bác sĩ theo các filter
+      let filteredDoctors = doctorsWithAvailability;
+
+      // Lọc theo chuyên khoa
+      if (filters.specialty && filters.specialty !== 'all') {
+        filteredDoctors = filteredDoctors.filter((doctor: any) =>
+          doctor.specialty === filters.specialty ||
+          doctor.specialization === filters.specialty
+        );
       }
 
-      return response.data || [];
+      // Lọc theo khoa
+      if (filters.department && filters.department !== 'all') {
+        filteredDoctors = filteredDoctors.filter((doctor: any) => {
+          // Kiểm tra khoa của bác sĩ
+          const doctorDepartment = doctor.department?.toUpperCase();
+          const filterDepartment = filters.department.toUpperCase();
+
+          // So sánh không phân biệt chữ hoa/thường
+          return doctorDepartment === filterDepartment ||
+                 doctorDepartment?.includes(filterDepartment) ||
+                 filterDepartment?.includes(doctorDepartment);
+        });
+      }
+
+      // Lọc theo tên
+      if (filters.name) {
+        const searchName = filters.name.toLowerCase();
+        filteredDoctors = filteredDoctors.filter((doctor: any) =>
+          doctor.name.toLowerCase().includes(searchName)
+        );
+      }
+
+      // Lọc bác sĩ có lịch trống
+      filteredDoctors = filteredDoctors.filter((doctor: any) =>
+        doctor.available_slots_count > 0
+      );
+
+      console.log(`Found ${filteredDoctors.length} doctors with available slots`);
+      return filteredDoctors;
     } catch (error: any) {
       console.error("Error getting available doctors:", error.response?.status, error.response?.data);
 
-      // Tạo dữ liệu mẫu cho bác sĩ khi có lỗi
-      return [
-        {
-          id: 1,
-          name: "Nguyễn Văn A",
-          specialty: "Tim mạch",
-          specialization: "Tim mạch",
-          department: filters.department || "1",
-          available_dates: [
-            startDate,
-            endDate
-          ]
-        },
-        {
-          id: 2,
-          name: "Trần Thị B",
-          specialty: "Thần kinh",
-          specialization: "Thần kinh",
-          department: filters.department || "1",
-          available_dates: [
-            startDate,
-            endDate
-          ]
-        }
-      ];
+      // Log chi tiết hơn về lỗi
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Error message:", error.message);
+      }
+
+      // Trả về mảng rỗng thay vì dữ liệu giả
+      return [];
     }
   },
 
   // Lấy danh sách chuyên khoa
   async getSpecialties(department?: string): Promise<any[]> {
     try {
-      // Xây dựng URL với tham số department nếu có
-      const url = department ? `/api/specialties/?department=${encodeURIComponent(department)}` : '/api/specialties/';
+      // Vì API /api/specialties/ không tồn tại, chúng ta sẽ trả về danh sách chuyên khoa mặc định
+      console.log("Getting specialties for department:", department);
 
-      const response = await apiClient.get(url);
-      console.log("Specialties API response:", response.data);
-      return response.data || [];
+      // Danh sách chuyên khoa mặc định
+      const defaultSpecialties = [
+        { id: "CARDIOLOGY", name: "Tim mạch" },
+        { id: "NEUROLOGY", name: "Thần kinh" },
+        { id: "ORTHOPEDICS", name: "Chỉnh hình" },
+        { id: "GASTROENTEROLOGY", name: "Tiêu hóa" },
+        { id: "DERMATOLOGY", name: "Da liễu" },
+        { id: "OPHTHALMOLOGY", name: "Mắt" },
+        { id: "PEDIATRICS", name: "Nhi" },
+        { id: "GYNECOLOGY", name: "Phụ khoa" },
+        { id: "UROLOGY", name: "Tiết niệu" },
+        { id: "ENT", name: "Tai Mũi Họng" },
+        { id: "PSYCHIATRY", name: "Tâm thần" },
+        { id: "DENTISTRY", name: "Nha khoa" }
+      ];
+
+      // Lọc chuyên khoa theo khoa nếu có
+      if (department && department !== 'all') {
+        // Trong thực tế, cần có logic lọc chuyên khoa theo khoa
+        // Ở đây chỉ trả về tất cả chuyên khoa
+        return defaultSpecialties;
+      }
+
+      return defaultSpecialties;
     } catch (error: any) {
-      console.error("Error getting specialties:", error.response?.status, error.response?.data);
+      console.error("Error getting specialties:", error);
       return [];
     }
   },
@@ -826,11 +1199,25 @@ const AppointmentService = {
   // Lấy danh sách khoa
   async getDepartments(): Promise<any[]> {
     try {
-      const response = await apiClient.get('/api/departments/');
-      console.log("Departments API response:", response.data);
-      return response.data || [];
+      // Vì API /api/departments/ không tồn tại, chúng ta sẽ trả về danh sách khoa mặc định
+      console.log("Getting departments");
+
+      // Danh sách khoa mặc định - đảm bảo ID khớp với backend
+      const defaultDepartments = [
+        { id: "CARDIOLOGY", name: "Khoa tim mạch" },
+        { id: "NEUROLOGY", name: "Khoa thần kinh" },
+        { id: "ORTHOPEDICS", name: "Khoa chỉnh hình" },
+        { id: "GASTROENTEROLOGY", name: "Khoa tiêu hóa" },
+        { id: "DERMATOLOGY", name: "Khoa da liễu" },
+        { id: "OPHTHALMOLOGY", name: "Khoa mắt" },
+        { id: "PEDIATRICS", name: "Khoa nhi" },
+        { id: "OBSTETRICS", name: "Khoa sản" },
+        { id: "GENERAL", name: "Khoa đa khoa" }
+      ];
+
+      return defaultDepartments;
     } catch (error: any) {
-      console.error("Error getting departments:", error.response?.status, error.response?.data);
+      console.error("Error getting departments:", error);
       return [];
     }
   },

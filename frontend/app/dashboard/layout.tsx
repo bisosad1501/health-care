@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: "/dashboard/patient/appointments", icon: <Calendar />, label: "Lịch hẹn" },
           { href: "/dashboard/patient/records", icon: <FileText />, label: "Hồ sơ y tế" },
           { href: "/dashboard/patient/prescriptions", icon: <Pill />, label: "Đơn thuốc" },
-          { href: "/dashboard/patient/billing", icon: <CreditCard />, label: "Thanh toán" },
+          { href: "/dashboard/patient/invoices", icon: <CreditCard />, label: "Hóa đơn" },
         ]
       case "doctor":
         return [

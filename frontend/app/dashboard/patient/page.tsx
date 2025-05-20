@@ -24,6 +24,10 @@ import {
 import PatientAppointments from "@/components/patient/patient-appointments"
 import { formatDate } from "@/lib/utils"
 import appointmentService from "@/lib/api/appointment-service"
+import PharmacyService, { PrescriptionWithDetails } from "@/lib/api/pharmacy-service"
+import LaboratoryService, { LabTest } from "@/lib/api/laboratory-service"
+import MedicalRecordService from "@/lib/api/medical-record-service"
+import { toast } from "sonner"
 
 export default function PatientDashboardPage() {
   const router = useRouter()
@@ -51,97 +55,200 @@ export default function PatientDashboardPage() {
       console.log('Appointments data from API:', appointmentsResponse)
 
       // Chuyển đổi dữ liệu từ API sang định dạng hiển thị
-      const formattedAppointments = appointmentsResponse.map(appointment => ({
-        id: appointment.id,
-        doctor: {
-          first_name: appointment.doctor_info?.first_name || '',
-          last_name: appointment.doctor_info?.last_name || '',
-          specialty: appointment.doctor_info?.specialty || '',
-          name: appointment.doctor_info?.name || ''
-        },
-        appointment_date: appointment.time_slot?.date || '',
-        start_time: appointment.time_slot?.start_time?.substring(0, 5) || '',
-        end_time: appointment.time_slot?.end_time?.substring(0, 5) || '',
-        reason: appointment.reason_text || '',
-        status: appointment.status || '',
-        location: appointment.time_slot?.location || 'Phòng khám chính',
-      }))
+      const formattedAppointments = appointmentsResponse.map(appointment => {
+        // Kiểm tra và log cấu trúc dữ liệu
+        console.log('Appointment structure:', JSON.stringify(appointment, null, 2))
+
+        // Xử lý thông tin bác sĩ
+        let doctorInfo = {
+          id: appointment.doctor_id || 0,
+          first_name: '',
+          last_name: '',
+          specialty: '',
+          email: ''
+        }
+
+        // Ưu tiên sử dụng doctor nếu có
+        if (appointment.doctor && typeof appointment.doctor === 'object') {
+          doctorInfo = {
+            ...doctorInfo,
+            ...appointment.doctor
+          }
+        }
+        // Nếu không có doctor, thử sử dụng doctor_info
+        else if (appointment.doctor_info && typeof appointment.doctor_info === 'object') {
+          doctorInfo = {
+            ...doctorInfo,
+            first_name: appointment.doctor_info.first_name || '',
+            last_name: appointment.doctor_info.last_name || '',
+            specialty: appointment.doctor_info.specialty || '',
+            email: appointment.doctor_info.email || ''
+          }
+        }
+
+        // Xử lý ngày và giờ
+        let appointmentDate = ''
+        let startTime = ''
+        let endTime = ''
+        let location = 'Phòng khám chính'
+
+        // Nếu có time_slot
+        if (appointment.time_slot) {
+          if (typeof appointment.time_slot === 'object') {
+            appointmentDate = appointment.time_slot.date || ''
+            startTime = appointment.time_slot.start_time?.substring(0, 5) || ''
+            endTime = appointment.time_slot.end_time?.substring(0, 5) || ''
+            location = appointment.time_slot.location || location
+          }
+        }
+        // Nếu không có time_slot, sử dụng các trường trực tiếp
+        else {
+          appointmentDate = appointment.appointment_date || appointment.date || ''
+          startTime = appointment.start_time?.substring(0, 5) || ''
+          endTime = appointment.end_time?.substring(0, 5) || ''
+          location = appointment.location || location
+        }
+
+        return {
+          id: appointment.id,
+          doctor: doctorInfo,
+          appointment_date: appointmentDate,
+          start_time: startTime,
+          end_time: endTime,
+          reason: appointment.reason_text || appointment.reason || '',
+          status: appointment.status || 'PENDING',
+          location: location,
+        }
+      })
 
       console.log('Formatted appointments:', formattedAppointments)
       setAppointments(formattedAppointments)
 
-        // Giả lập dữ liệu đơn thuốc
-        const mockPrescriptions = [
-          {
-            id: 1,
-            doctor: {
-              first_name: "Lê",
-              last_name: "Văn C",
-              specialty: "Nội khoa",
-            },
-            prescription_date: "2025-05-01",
-            status: "DISPENSED",
-            medications: [
-              { name: "Paracetamol 500mg", dosage: "1 viên x 3 lần/ngày" },
-              { name: "Vitamin C 1000mg", dosage: "1 viên/ngày" },
-            ],
-          },
-          {
-            id: 2,
-            doctor: {
-              first_name: "Trần",
-              last_name: "Thị B",
-              specialty: "Thần kinh",
-            },
-            prescription_date: "2025-05-10",
-            status: "PENDING",
-            medications: [
-              { name: "Amitriptyline 25mg", dosage: "1 viên trước khi ngủ" },
-              { name: "Ibuprofen 400mg", dosage: "1 viên x 2 lần/ngày khi đau" },
-            ],
-          },
-        ]
-        setPrescriptions(mockPrescriptions)
+      // Lấy dữ liệu đơn thuốc từ API
+      let formattedPrescriptions = []
+      try {
+        const prescriptionsResponse = await PharmacyService.getPatientPrescriptions()
+        console.log('Prescriptions data from API:', prescriptionsResponse)
 
-        // Giả lập dữ liệu xét nghiệm
-        const mockLabTests = [
-          {
-            id: 1,
-            test_name: "Công thức máu toàn phần",
-            ordered_at: "2025-05-05",
-            status: "COMPLETED",
-            doctor: {
-              first_name: "Nguyễn",
-              last_name: "Văn A",
-              specialty: "Tim mạch",
-            },
-          },
-          {
-            id: 2,
-            test_name: "Sinh hóa máu",
-            ordered_at: "2025-05-10",
-            status: "PENDING",
-            doctor: {
-              first_name: "Trần",
-              last_name: "Thị B",
-              specialty: "Thần kinh",
-            },
-          },
-        ]
-        setLabTests(mockLabTests)
+        // Chuyển đổi dữ liệu từ API sang định dạng hiển thị
+        formattedPrescriptions = await Promise.all(prescriptionsResponse.map(async (prescription) => {
+          // Lấy thông tin bác sĩ nếu cần
+          let doctorInfo = {
+            first_name: '',
+            last_name: '',
+            specialty: ''
+          }
 
-        // Cập nhật thống kê
-        setStats({
-          upcomingAppointments: formattedAppointments.filter((a) => a.status === "CONFIRMED" || a.status === "SCHEDULED")
-            .length,
-          pendingPrescriptions: mockPrescriptions.filter((p) => p.status === "PENDING").length,
-          pendingLabTests: mockLabTests.filter((l) => l.status === "PENDING").length,
-          completedVisits: 15 // Giả lập số lần khám đã hoàn thành
-        })
+          try {
+            if (prescription.doctor_id) {
+              const doctorResponse = await MedicalRecordService.getDoctorInfo(prescription.doctor_id)
+              if (doctorResponse) {
+                doctorInfo = {
+                  first_name: doctorResponse.first_name || '',
+                  last_name: doctorResponse.last_name || '',
+                  specialty: doctorResponse.doctor_profile?.specialty?.name || ''
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching doctor info for prescription ${prescription.id}:`, error)
+          }
 
-        setLoading(false)
+          // Xử lý các item trong đơn thuốc
+          const medications = prescription.items?.map(item => ({
+            name: item.medication_details?.name || 'Thuốc không xác định',
+            dosage: `${item.dosage || ''} - ${item.frequency || ''}`
+          })) || []
+
+          return {
+            id: prescription.id,
+            doctor: doctorInfo,
+            prescription_date: prescription.date_prescribed || prescription.created_at,
+            status: prescription.status || 'PENDING',
+            medications: medications
+          }
+        }))
+
+        console.log('Formatted prescriptions:', formattedPrescriptions)
+        setPrescriptions(formattedPrescriptions)
+      } catch (error) {
+        console.error("Error fetching prescriptions:", error)
+        toast.error("Không thể tải thông tin đơn thuốc")
+        formattedPrescriptions = []
+        setPrescriptions([])
+      }
+
+      // Lấy dữ liệu xét nghiệm từ API
+      let formattedLabTests = []
+      try {
+        const labTestsResponse = await LaboratoryService.getPatientLabTests()
+        console.log('Lab tests data from API:', labTestsResponse)
+
+        // Chuyển đổi dữ liệu từ API sang định dạng hiển thị
+        formattedLabTests = await Promise.all(labTestsResponse.map(async (test) => {
+          // Lấy thông tin bác sĩ nếu cần
+          let doctorInfo = {
+            first_name: '',
+            last_name: '',
+            specialty: ''
+          }
+
+          try {
+            if (test.ordered_by) {
+              const doctorResponse = await MedicalRecordService.getDoctorInfo(test.ordered_by)
+              if (doctorResponse) {
+                doctorInfo = {
+                  first_name: doctorResponse.first_name || '',
+                  last_name: doctorResponse.last_name || '',
+                  specialty: doctorResponse.doctor_profile?.specialty?.name || ''
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching doctor info for lab test ${test.id}:`, error)
+          }
+
+          return {
+            id: test.id,
+            test_name: test.test_type_details?.name || 'Xét nghiệm không xác định',
+            ordered_at: test.ordered_at || test.created_at,
+            status: test.status || 'PENDING',
+            doctor: doctorInfo
+          }
+        }))
+
+        console.log('Formatted lab tests:', formattedLabTests)
+        setLabTests(formattedLabTests)
+      } catch (error) {
+        console.error("Error fetching lab tests:", error)
+        toast.error("Không thể tải thông tin xét nghiệm")
+        formattedLabTests = []
+        setLabTests([])
+      }
+
+      // Lấy số lần khám đã hoàn thành từ API
+      let completedVisitsCount = 0
+      try {
+        const encounters = await MedicalRecordService.getPatientEncounters()
+        completedVisitsCount = encounters.length
+        console.log('Completed visits count:', completedVisitsCount)
+      } catch (error) {
+        console.error("Error fetching completed visits:", error)
+        completedVisitsCount = 0
+      }
+
+      // Cập nhật thống kê
+      setStats({
+        upcomingAppointments: formattedAppointments.filter((a) => a.status === "CONFIRMED" || a.status === "SCHEDULED").length,
+        pendingPrescriptions: formattedPrescriptions.filter((p) => p.status === "PENDING").length,
+        pendingLabTests: formattedLabTests.filter((l) => l.status === "PENDING").length,
+        completedVisits: completedVisitsCount
+      })
+
+      setLoading(false)
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
+      toast.error("Không thể tải dữ liệu trang chủ")
       setLoading(false)
     }
   }
@@ -184,16 +291,10 @@ export default function PatientDashboardPage() {
         title="Trang chủ"
         description="Xin chào, chào mừng bạn đến với hệ thống quản lý y tế"
         actions={
-          <div className="flex gap-2">
-            <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
-              <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
-              <span>Đặt lịch hẹn</span>
-            </Button>
-            <Button onClick={() => router.push("/dashboard/patient/appointments/simple-booking")} variant="outline" className="group">
-              <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
-              <span>Đặt lịch đơn giản</span>
-            </Button>
-          </div>
+          <Button onClick={() => router.push("/dashboard/patient/appointments/simple-booking")} className="group">
+            <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+            <span>Đặt lịch hẹn</span>
+          </Button>
         }
       />
 
@@ -285,16 +386,10 @@ export default function PatientDashboardPage() {
                   )}
                 </CardContent>
                 <CardFooter className="flex justify-center border-t pt-4">
-                  <div className="flex gap-2 justify-center">
-                    <Button onClick={() => router.push("/dashboard/patient/appointments/new")} className="group">
-                      <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
-                      <span>Đặt lịch hẹn</span>
-                    </Button>
-                    <Button onClick={() => router.push("/dashboard/patient/appointments/simple-booking")} variant="outline" className="group">
-                      <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
-                      <span>Đặt lịch đơn giản</span>
-                    </Button>
-                  </div>
+                  <Button onClick={() => router.push("/dashboard/patient/appointments/simple-booking")} className="group">
+                    <PlusCircle className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+                    <span>Đặt lịch hẹn</span>
+                  </Button>
                 </CardFooter>
               </Card>
             </motion.div>

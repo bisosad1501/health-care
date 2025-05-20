@@ -91,6 +91,10 @@ class UserViewSet(viewsets.ModelViewSet):
         """Lấy danh sách người dùng dựa trên quyền"""
         if self.request.user.role == 'ADMIN':
             return User.objects.all()
+        elif self.request.user.role == 'PATIENT':
+            # Bệnh nhân có thể xem thông tin của bác sĩ và của chính họ
+            doctor_ids = User.objects.filter(role='DOCTOR').values_list('id', flat=True)
+            return User.objects.filter(Q(id=self.request.user.id) | Q(id__in=doctor_ids))
         return User.objects.filter(id=self.request.user.id)
 
     def create(self, request, *args, **kwargs):
@@ -606,9 +610,26 @@ class DepartmentViewSet(viewsets.ViewSet):
 class DoctorListViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet để lấy danh sách bác sĩ.
+    Tất cả người dùng đã xác thực đều có thể truy cập thông tin bác sĩ.
     """
     serializer_class = DoctorProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=True, methods=['get'], url_path='user')
+    def get_user_info(self, request, pk=None):
+        """
+        Lấy thông tin người dùng của bác sĩ.
+        """
+        try:
+            doctor_profile = self.get_object()
+            user = doctor_profile.user
+            serializer = UserDetailSerializer(user)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {"detail": f"Error retrieving doctor user info: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def get_queryset(self):
         """Lấy danh sách bác sĩ với các bộ lọc"""

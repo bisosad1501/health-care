@@ -73,6 +73,21 @@ router.use('/api/lab-technician-profile', userServiceProxy);
 router.use('/api/pharmacist-profile', userServiceProxy);
 router.use('/api/insurance-provider-profile', userServiceProxy);
 
+// Special route for doctor info - compatibility with medical-record-service
+router.get('/api/users/doctors/:doctor_id', (req, res, next) => {
+  console.log(`[USER] Forwarding doctor info request for doctor_id: ${req.params.doctor_id}`);
+
+  const doctorId = req.params.doctor_id;
+
+  // Thay đổi URL request để trỏ đến endpoint đúng
+  req.url = `/api/users/${doctorId}/`;
+
+  console.log(`[USER] Redirecting from /api/users/doctors/${doctorId} to ${req.url}`);
+
+  // Chuyển tiếp request đến user-service
+  userServiceProxy(req, res, next);
+});
+
 // User data routes
 router.use('/api/addresses', userServiceProxy);
 router.use('/api/contact-info', userServiceProxy);

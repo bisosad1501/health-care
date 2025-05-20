@@ -9,7 +9,6 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import logging
 
-logger = logging.getLogger(__name__)
 from .models import (
     MedicalRecord, Encounter, Diagnosis, Treatment, Allergy,
     Immunization, MedicalHistory, Medication,
@@ -28,7 +27,86 @@ from .permissions import (
     IsPatient, IsLabTechnician, IsPharmacist, IsServiceRequest
 )
 from .authentication import CustomJWTAuthentication
-from .services import UserService, AppointmentService
+from .services import UserService, AppointmentService, BillingService
+
+logger = logging.getLogger(__name__)
+
+@api_view(['PATCH'])
+@authentication_classes([CustomJWTAuthentication])
+@permission_classes([IsDoctor | IsAdmin])
+def update_encounter_status(request, encounter_id):
+    """
+    API endpoint để cập nhật trạng thái cuộc gặp.
+    """
+    # Lấy cuộc gặp
+    try:
+        encounter = Encounter.objects.get(id=encounter_id)
+    except Encounter.DoesNotExist:
+        return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Kiểm tra quyền truy cập
+    user_role = request.auth.get('role', None) if request.auth else None
+    user_id = request.user.id
+
+    if user_role not in ['DOCTOR', 'ADMIN'] and (user_role == 'DOCTOR' and encounter.doctor_id != user_id):
+        return Response({"detail": "You do not have permission to update this encounter."}, status=status.HTTP_403_FORBIDDEN)
+
+    # Cập nhật trạng thái
+    new_status = request.data.get('status')
+    if not new_status:
+        return Response({"detail": "Status is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    old_status = encounter.status
+    encounter.status = new_status
+    encounter.save()
+
+    # Lấy token xác thực từ request
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+    auth_token = None
+    if auth_header and auth_header.startswith('Bearer '):
+        auth_token = auth_header.split(' ')[1]
+
+    # Nếu trạng thái chuyển sang COMPLETED, tạo hóa đơn tự động
+    if new_status == 'COMPLETED' and old_status != 'COMPLETED':
+        # Tạo hóa đơn
+        invoice = BillingService.create_invoice_from_encounter({'encounter_id': encounter.id}, auth_token)
+
+        if invoice:
+            # Cập nhật trạng thái thanh toán của cuộc gặp
+            encounter.billing_status = 'BILLED'
+            encounter.invoice_id = invoice.get('id')
+            encounter.save()
+
+            return Response({
+                "detail": "Encounter status updated and invoice created.",
+                "encounter_status": new_status,
+                "invoice_id": invoice.get('id'),
+                "invoice_status": invoice.get('status')
+            })
+
+    return Response({
+        "detail": "Encounter status updated.",
+        "encounter_status": new_status
+    })
+from .models import (
+    MedicalRecord, Encounter, Diagnosis, Treatment, Allergy,
+    Immunization, MedicalHistory, Medication,
+    VitalSign, LabTest, LabResult
+)
+from .serializers import (
+    MedicalRecordSerializer, MedicalRecordSummarySerializer,
+    DiagnosisSerializer, TreatmentSerializer, AllergySerializer,
+    ImmunizationSerializer, MedicalHistorySerializer, MedicationSerializer,
+    VitalSignSerializer, LabTestSerializer, LabResultSerializer,
+    EncounterSerializer
+)
+from .permissions import (
+    CanViewMedicalRecords, CanCreateMedicalRecord, CanUpdateMedicalRecord,
+    CanDeleteMedicalRecord, CanShareMedicalRecord, IsAdmin, IsDoctor, IsNurse,
+    IsPatient, IsLabTechnician, IsPharmacist, IsServiceRequest
+)
+from .authentication import CustomJWTAuthentication
+from .services import UserService, AppointmentService, BillingService
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
@@ -184,6 +262,32 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         """
         instance = self.get_object()
         serializer = MedicalRecordSummarySerializer(instance)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='patient/(?P<patient_id>[^/.]+)')
+    def patient_records(self, request, patient_id=None):
+        """
+        Lấy hồ sơ y tế của bệnh nhân.
+        """
+        user_role = request.auth.get('role', None) if request.auth else None
+        user_id = request.user.id
+
+        # Kiểm tra quyền truy cập
+        if user_role == 'PATIENT' and str(user_id) != str(patient_id):
+            return Response(
+                {"detail": "You can only access your own medical records."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        queryset = MedicalRecord.objects.filter(patient_id=patient_id)
+
+        # Phân trang
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = MedicalRecordSummarySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = MedicalRecordSummarySerializer(queryset, many=True)
         return Response(serializer.data)
 
 # API cho Diagnosis
@@ -1592,6 +1696,17 @@ class EncounterDetailAPIView(APIView):
                     logger.error(f"Error creating invoice for encounter {updated_encounter.id}: {str(e)}")
                     # Don't raise the exception to avoid affecting the main flow
 
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        encounter = self.get_object(pk)
+        if encounter is None:
+            return Response({"detail": "Encounter not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = EncounterSerializer(encounter, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

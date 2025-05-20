@@ -12,7 +12,7 @@ from .views import (
     VitalSignListCreateAPIView, VitalSignDetailAPIView,
     LabTestListCreateAPIView, LabTestDetailAPIView,
     LabResultListCreateAPIView, LabResultDetailAPIView,
-    create_encounter_from_appointment
+    create_encounter_from_appointment, update_encounter_status
 )
 
 # Tạo router cho ViewSet
@@ -28,6 +28,7 @@ urlpatterns = [
     path('encounters/', EncounterListCreateAPIView.as_view(), name='encounter-list'),
     path('encounters/<int:pk>/', EncounterDetailAPIView.as_view(), name='encounter-detail'),
     path('encounters/from-appointment/<int:appointment_id>/', create_encounter_from_appointment, name='create-encounter-from-appointment-alt'),
+    path('encounters/<int:encounter_id>/update-status/', update_encounter_status, name='update-encounter-status'),
 
     # Treatment endpoints
     path('treatments/', TreatmentListCreateAPIView.as_view(), name='treatment-list'),

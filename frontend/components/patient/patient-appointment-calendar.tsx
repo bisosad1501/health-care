@@ -307,7 +307,7 @@ export default function PatientAppointmentCalendar() {
               <h3 className="mt-2 text-base font-medium">Không có lịch hẹn</h3>
               <p className="mt-1 text-sm text-muted-foreground">Bạn không có lịch hẹn nào vào ngày này</p>
               <Button className="mt-4" variant="outline" size="sm" asChild>
-                <Link href="/dashboard/patient/appointments/new">
+                <Link href="/dashboard/patient/appointments/simple-booking">
                   Đặt lịch hẹn mới
                 </Link>
               </Button>

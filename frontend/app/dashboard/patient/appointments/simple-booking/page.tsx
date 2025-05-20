@@ -43,42 +43,31 @@ export default function SimpleAppointmentBooking() {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        // Gọi trực tiếp API thay vì sử dụng service để kiểm tra lỗi chi tiết hơn
-        const token = localStorage.getItem('token')
-        const response = await fetch('http://localhost:4000/api/departments/', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          console.error('API error:', errorData)
-          throw new Error(errorData.message || errorData.error || 'Không thể tải danh sách khoa')
-        }
-
-        const data = await response.json()
-        console.log('Danh sách khoa:', data)
-        setDepartments(data)
-        setIsLoading(false)
+        // Sử dụng service để lấy danh sách khoa mặc định
+        const departments = await appointmentService.getDepartments();
+        console.log('Danh sách khoa:', departments);
+        setDepartments(departments);
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching departments:", error)
-        toast.error("Không thể tải danh sách khoa. Vui lòng thử lại sau.")
+        console.error("Error fetching departments:", error);
+        toast.error("Không thể tải danh sách khoa. Vui lòng thử lại sau.");
 
-        // Tạo dữ liệu mẫu nếu không thể tải từ API
+        // Tạo dữ liệu mẫu nếu không thể tải từ service
         const mockDepartments = [
-          { id: '1', code: 'INTERNAL_MEDICINE', name: 'Khoa Nội', description: 'Khoa Nội tổng hợp' },
-          { id: '2', code: 'SURGERY', name: 'Khoa Ngoại', description: 'Khoa Ngoại tổng hợp' },
-          { id: '3', code: 'EMERGENCY', name: 'Khoa Cấp cứu', description: 'Khoa Cấp cứu' },
-          { id: '4', code: 'OBSTETRICS', name: 'Khoa Sản', description: 'Khoa Sản phụ khoa' },
-          { id: '5', code: 'PEDIATRICS', name: 'Khoa Nhi', description: 'Khoa Nhi' }
-        ]
-        setDepartments(mockDepartments)
-        setIsLoading(false)
+          { id: 'GENERAL', name: 'Khoa đa khoa' },
+          { id: 'CARDIOLOGY', name: 'Khoa tim mạch' },
+          { id: 'NEUROLOGY', name: 'Khoa thần kinh' },
+          { id: 'PEDIATRICS', name: 'Khoa nhi' },
+          { id: 'OBSTETRICS', name: 'Khoa sản' },
+          { id: 'ORTHOPEDICS', name: 'Khoa chỉnh hình' },
+          { id: 'ONCOLOGY', name: 'Khoa ung thư' }
+        ];
+        setDepartments(mockDepartments);
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchDepartments()
+    fetchDepartments();
   }, [])
 
   // Tải danh sách bác sĩ và ngày có lịch trống khi chọn khoa
@@ -87,6 +76,12 @@ export default function SimpleAppointmentBooking() {
 
     const fetchDoctors = async () => {
       setIsLoading(true)
+
+      // Định nghĩa các biến cần thiết ngay từ đầu
+      let availableDoctorIds: number[] = []
+      let availableDates: Date[] = []
+      let departmentsWithAvailability: Set<string> = new Set()
+
       try {
         // Lấy ngày hiện tại và ngày 30 ngày sau
         const today = new Date()
@@ -98,39 +93,85 @@ export default function SimpleAppointmentBooking() {
 
         console.log(`Tìm kiếm bác sĩ có lịch từ ${startDate} đến ${endDate}`)
 
-        // Thay vì gọi API doctors/available, gọi trực tiếp API time-slots để lấy các khung giờ có sẵn
-        const token = localStorage.getItem('token')
-        const timeSlotsResponse = await fetch(`http://localhost:4000/api/time-slots/?date=${startDate}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        // Lấy tất cả khung giờ có sẵn trong khoảng thời gian
+        try {
+          // Sử dụng service thay vì gọi fetch trực tiếp
+          console.log(`Tìm kiếm khung giờ có sẵn từ ${startDate} đến ${endDate}`)
 
-        let availableDoctorIds: number[] = []
-        let availableDates: Date[] = []
+          // Lấy danh sách bác sĩ có lịch trống
+          const availableDoctors = await appointmentService.getAvailableDoctors(startDate, endDate, {
+            department: selectedDepartment
+          })
 
-        if (timeSlotsResponse.ok) {
-          const timeSlotsData = await timeSlotsResponse.json()
-          console.log('Khung giờ có sẵn:', timeSlotsData)
+          console.log('Bác sĩ có lịch trống:', availableDoctors)
 
-          // Lấy danh sách ID bác sĩ có lịch trống
-          if (timeSlotsData.results && timeSlotsData.results.length > 0) {
-            // Lấy các ID bác sĩ duy nhất có khung giờ trống
-            availableDoctorIds = [...new Set(timeSlotsData.results
-              .filter((slot: any) => slot.is_available)
-              .map((slot: any) => slot.doctor_id))] as number[]
+          if (availableDoctors.length > 0) {
+            // Lấy các ID bác sĩ duy nhất có lịch trống
+            availableDoctorIds = availableDoctors.map((doctor: any) => doctor.id)
 
             // Lấy các ngày có lịch trống
-            const dateStrings = [...new Set(timeSlotsData.results
-              .filter((slot: any) => slot.is_available)
-              .map((slot: any) => slot.date))] as string[]
+            const allDates = availableDoctors.flatMap((doctor: any) => doctor.available_dates || [])
+            const uniqueDates = [...new Set(allDates)]
+            availableDates = uniqueDates.map(dateStr => parseISO(dateStr as string))
 
-            availableDates = dateStrings.map(dateStr => parseISO(dateStr))
+            // Lấy các khoa có lịch trống
+            availableDoctors.forEach((doctor: any) => {
+              if (doctor.department) {
+                departmentsWithAvailability.add(doctor.department)
+              }
+            })
+
             console.log('Các ngày có lịch trống:', availableDates)
+            console.log('Các khoa có lịch trống:', [...departmentsWithAvailability])
+          } else {
+            console.log('Không tìm thấy bác sĩ nào có lịch trống')
+
+            // Nếu không tìm thấy bác sĩ nào có lịch trống, thử lấy tất cả bác sĩ
+            const allDoctorsResponse = await fetch('http://localhost:4000/api/doctors/', {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            })
+
+            if (allDoctorsResponse.ok) {
+              try {
+                const allDoctors = await allDoctorsResponse.json()
+                console.log('Tất cả bác sĩ:', allDoctors)
+
+                // Lọc bác sĩ theo khoa
+                const doctorsInDepartment = allDoctors.filter((doctor: any) =>
+                  doctor.doctor_profile?.department?.includes(selectedDepartment)
+                )
+
+                if (doctorsInDepartment.length > 0) {
+                  availableDoctorIds = doctorsInDepartment.map((doctor: any) => doctor.id)
+                }
+              } catch (jsonError) {
+                console.error('Lỗi khi phân tích dữ liệu JSON từ API doctors:', jsonError)
+                // Hiển thị thông báo lỗi
+                toast.error('Có lỗi xảy ra khi tải danh sách bác sĩ. Vui lòng thử lại sau.')
+              }
+            }
+          }
+        } catch (error: any) {
+          console.error('Lỗi khi tải khung giờ có sẵn:', error)
+
+          // Hiển thị thông báo lỗi chi tiết
+          if (error.response) {
+            console.error('Response status:', error.response.status)
+            console.error('Response data:', error.response.data)
+            toast.error(`Lỗi khi tải khung giờ: ${error.response.status} - ${error.response.data?.detail || 'Không có thông tin chi tiết'}`)
+          } else if (error.message) {
+            toast.error(`Lỗi: ${error.message}`)
+          } else {
+            toast.error('Có lỗi xảy ra khi tải khung giờ. Vui lòng thử lại sau.')
           }
         }
 
+        // Các biến đã được định nghĩa ở đầu hàm
+
         // Lấy thông tin chi tiết của các bác sĩ
+        const token = localStorage.getItem('token')
         const allDoctorsResponse = await fetch('http://localhost:4000/api/doctors/', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -143,11 +184,35 @@ export default function SimpleAppointmentBooking() {
           const allDoctors = await allDoctorsResponse.json()
           console.log('Tất cả bác sĩ:', allDoctors)
 
-          // Nếu có bác sĩ có lịch trống, chỉ lọc các bác sĩ đó
+          // Nếu có bác sĩ có lịch trống, ưu tiên lọc theo khoa đã chọn và có lịch trống
           if (availableDoctorIds.length > 0) {
-            response = allDoctors.filter((doctor: any) =>
-              availableDoctorIds.includes(doctor.id)
+            // Lọc bác sĩ theo khoa đã chọn và có lịch trống
+            const doctorsInSelectedDepartment = allDoctors.filter((doctor: any) =>
+              availableDoctorIds.includes(doctor.id) &&
+              doctor.doctor_profile?.department?.includes(selectedDepartment)
             )
+
+            // Nếu có bác sĩ thuộc khoa đã chọn và có lịch trống, sử dụng danh sách này
+            if (doctorsInSelectedDepartment.length > 0) {
+              response = doctorsInSelectedDepartment
+              console.log(`Tìm thấy ${doctorsInSelectedDepartment.length} bác sĩ thuộc khoa đã chọn và có lịch trống`)
+            } else {
+              // Nếu không có bác sĩ thuộc khoa đã chọn có lịch trống, sử dụng tất cả bác sĩ có lịch trống
+              response = allDoctors.filter((doctor: any) =>
+                availableDoctorIds.includes(doctor.id)
+              )
+              console.log(`Không có bác sĩ thuộc khoa đã chọn có lịch trống, hiển thị ${response.length} bác sĩ có lịch trống`)
+
+              // Hiển thị thông báo gợi ý các khoa có bác sĩ với lịch trống
+              if (departmentsWithAvailability.size > 0) {
+                const departmentsWithDoctors = [...departmentsWithAvailability].map(deptId => {
+                  const dept = departments.find(d => d.id === deptId)
+                  return dept ? dept.name : deptId
+                }).join(', ')
+
+                toast.info(`Không có bác sĩ thuộc khoa đã chọn có lịch trống. Các khoa có bác sĩ với lịch trống: ${departmentsWithDoctors}`)
+              }
+            }
           } else {
             // Nếu không có bác sĩ nào có lịch trống, lọc theo khoa
             response = allDoctors.filter((doctor: any) =>
@@ -160,6 +225,8 @@ export default function SimpleAppointmentBooking() {
             if (response.length === 0) {
               response = allDoctors.filter((doctor: any) => doctor.doctor_profile)
             }
+
+            console.log(`Không tìm thấy bác sĩ nào có lịch trống, hiển thị ${response.length} bác sĩ thuộc khoa đã chọn`)
           }
 
           console.log('Bác sĩ đã lọc:', response)
@@ -170,6 +237,7 @@ export default function SimpleAppointmentBooking() {
           id: doctor.id,
           name: doctor.name || (doctor.first_name && doctor.last_name ? `${doctor.first_name} ${doctor.last_name}` : 'BS. Chưa cập nhật'),
           specialty: doctor.doctor_profile?.specialization || doctor.specialty || doctor.specialization || 'Chưa cập nhật',
+          department: doctor.doctor_profile?.department || doctor.department || selectedDepartment,
           avatar: doctor.avatar || doctor.profile_image || '/placeholder.svg?height=40&width=40',
           available_dates: availableDates.map(date => format(date, 'yyyy-MM-dd'))
         }))
@@ -199,11 +267,68 @@ export default function SimpleAppointmentBooking() {
     }
 
     fetchDoctors()
-  }, [selectedDepartment])
+  }, [selectedDepartment, departments])
+
+  // Phương thức debug để gọi trực tiếp API
+  const debugFetchTimeSlots = async (doctorId: number, date: string) => {
+    try {
+      console.log(`[DEBUG] Gọi trực tiếp API để lấy khung giờ cho bác sĩ ${doctorId} vào ngày ${date}`)
+
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:4000/api/time-slots/?doctor_id=${doctorId}&date=${date}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`[DEBUG] Kết quả API trực tiếp:`, data)
+
+        if (data.results && Array.isArray(data.results)) {
+          console.log(`[DEBUG] Tìm thấy ${data.results.length} khung giờ`)
+
+          // Kiểm tra từng khung giờ
+          data.results.forEach((slot: any, index: number) => {
+            console.log(`[DEBUG] Khung giờ ${index + 1}:`, {
+              id: slot.id,
+              date: slot.date,
+              start_time: slot.start_time,
+              end_time: slot.end_time,
+              status: slot.status,
+              status_name: slot.status_name,
+              is_available: slot.is_available,
+              department: slot.department
+            })
+          })
+
+          // Lọc các khung giờ còn trống
+          const availableSlots = data.results.filter((slot: any) =>
+            slot.is_available === true ||
+            slot.status === "AVAILABLE" ||
+            slot.status_name === "Còn trống"
+          )
+
+          console.log(`[DEBUG] Tìm thấy ${availableSlots.length} khung giờ trống`)
+        } else {
+          console.log(`[DEBUG] Không tìm thấy khung giờ nào`)
+        }
+      } else {
+        console.error(`[DEBUG] Lỗi khi gọi API: ${response.status}`)
+      }
+    } catch (error) {
+      console.error(`[DEBUG] Lỗi khi gọi API:`, error)
+    }
+  }
 
   // Tải khung giờ khi chọn bác sĩ và ngày
   useEffect(() => {
     if (!selectedDoctor || !selectedDate) return
+
+    // Gọi phương thức debug
+    const doctorId = parseInt(selectedDoctor)
+    const formattedDate = format(selectedDate, 'yyyy-MM-dd')
+    debugFetchTimeSlots(doctorId, formattedDate)
 
     const fetchTimeSlots = async () => {
       setIsLoading(true)
@@ -213,41 +338,86 @@ export default function SimpleAppointmentBooking() {
 
         console.log(`Tìm kiếm khung giờ trống cho bác sĩ ${doctorId} vào ngày ${formattedDate}`)
 
-        const timeSlotsResponse = await appointmentService.getAvailableTimeSlots(doctorId, formattedDate, "", {
-          is_available: true
-        })
+        // Sử dụng try-catch để bắt lỗi cụ thể từ API
+        try {
+          // Sử dụng getTimeSlotsForDate thay vì getAvailableTimeSlots
+          const timeSlotsResponse = await appointmentService.getTimeSlotsForDate(doctorId, formattedDate)
 
-        console.log('Kết quả tìm kiếm khung giờ:', timeSlotsResponse)
+          console.log('Kết quả tìm kiếm khung giờ:', timeSlotsResponse)
 
-        // Sử dụng trực tiếp kết quả trả về từ API
-        let slotsToUse = timeSlotsResponse
+          // Lọc các khung giờ còn trống
+          let slotsToUse = timeSlotsResponse.filter(slot =>
+            slot.is_available === true ||
+            slot.status === "AVAILABLE" ||
+            slot.status_name === "Còn trống"
+          )
 
-        // Nếu không có khung giờ nào, hiển thị thông báo cho người dùng
-        if (!slotsToUse || slotsToUse.length === 0) {
+          console.log('Khung giờ sau khi lọc:', slotsToUse)
+
+          // Nếu không có khung giờ nào, hiển thị thông báo cho người dùng
+          if (!slotsToUse || slotsToUse.length === 0) {
+            setNoTimeSlots(true)
+            console.log('Không tìm thấy khung giờ trống')
+          } else {
+            setNoTimeSlots(false)
+            console.log(`Tìm thấy ${slotsToUse.length} khung giờ trống`)
+          }
+
+          const formattedTimeSlots = slotsToUse.map(slot => ({
+            id: slot.id,
+            time: `${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)}`,
+            start_time: slot.start_time,
+            end_time: slot.end_time,
+            available: slot.is_available !== false,
+            date: slot.date,
+            doctor_id: slot.doctor_id,
+            location: slot.location || '',
+            department: slot.department || ''
+          }))
+
+          console.log('Khung giờ đã định dạng:', formattedTimeSlots)
+
+          setTimeSlots(formattedTimeSlots)
+        } catch (apiError: any) {
+          console.error('Lỗi khi gọi API getAvailableTimeSlots:', apiError)
+
+          // Xử lý lỗi từ API
+          if (apiError.response) {
+            console.error('Response status:', apiError.response.status)
+            console.error('Response data:', apiError.response.data)
+
+            // Hiển thị thông báo lỗi chi tiết
+            let errorMessage = 'Không thể tải khung giờ. Vui lòng thử lại sau.'
+            if (apiError.response.data?.detail) {
+              errorMessage = apiError.response.data.detail
+            } else if (typeof apiError.response.data === 'string') {
+              errorMessage = apiError.response.data
+            }
+
+            toast.error(errorMessage)
+          } else if (apiError.message) {
+            toast.error(`Lỗi: ${apiError.message}`)
+          } else {
+            toast.error('Có lỗi xảy ra khi tải khung giờ. Vui lòng thử lại sau.')
+          }
+
+          // Đặt trạng thái không có khung giờ
           setNoTimeSlots(true)
-        } else {
-          setNoTimeSlots(false)
+          setTimeSlots([])
+        }
+      } catch (error: any) {
+        console.error("Error in fetchTimeSlots:", error)
+
+        // Hiển thị thông báo lỗi
+        let errorMessage = 'Không thể tải khung giờ. Vui lòng thử lại sau.'
+        if (error.message) {
+          errorMessage = `Lỗi: ${error.message}`
         }
 
-        const formattedTimeSlots = slotsToUse.map(slot => ({
-          id: slot.id,
-          time: `${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)}`,
-          start_time: slot.start_time,
-          end_time: slot.end_time,
-          available: slot.is_available !== false,
-          date: slot.date,
-          doctor_id: slot.doctor_id,
-          location: slot.location || '',
-          department: slot.department || ''
-        }))
-
-        console.log('Khung giờ đã định dạng:', formattedTimeSlots)
-
-        setTimeSlots(formattedTimeSlots)
-        setIsLoading(false)
-      } catch (error) {
-        console.error("Error fetching time slots:", error)
-        toast.error("Không thể tải khung giờ. Vui lòng thử lại sau.")
+        toast.error(errorMessage)
+        setNoTimeSlots(true)
+        setTimeSlots([])
+      } finally {
         setIsLoading(false)
       }
     }
@@ -305,60 +475,87 @@ export default function SimpleAppointmentBooking() {
       // Tạo dữ liệu gửi lên API theo đúng yêu cầu của backend
       const appointmentData = {
         patient_id: patientId,
-        time_slot_id: parseInt(selectedTimeSlot), // Backend yêu cầu time_slot_id thay vì time_slot
+        time_slot_id: parseInt(selectedTimeSlot),
+        doctor_id: parseInt(selectedDoctor), // Thêm doctor_id để đảm bảo backend có thông tin bác sĩ
         reason_text: reason,
         appointment_type: "REGULAR",
         priority: 0,
         created_by: patientId,
-        notes: "",
-        status: "SCHEDULED", // Thêm trường status để đảm bảo trạng thái lịch hẹn hợp lệ
-        doctor_id: parseInt(selectedDoctor) // Thêm doctor_id để đảm bảo backend có thông tin bác sĩ
+        notes: ""
       }
 
       console.log('Gửi dữ liệu đặt lịch:', appointmentData)
 
-      // Gọi trực tiếp API thay vì sử dụng service để kiểm tra lỗi chi tiết hơn
-      const token = localStorage.getItem('token')
+      // Sử dụng try-catch để bắt lỗi cụ thể từ API
+      try {
+        const response = await appointmentService.createAppointment(appointmentData)
+        console.log('Kết quả đặt lịch:', response)
 
-      // Thử gọi API để tạo lịch hẹn
-      console.log('Gọi API tạo lịch hẹn với token:', token)
-      const response = await fetch('http://localhost:4000/api/appointments/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(appointmentData)
-      })
+        toast.success('Đặt lịch hẹn thành công!')
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('API error:', errorData)
-        throw new Error(errorData.message || errorData.error || 'Có lỗi xảy ra khi đặt lịch')
-      }
-
-      const responseData = await response.json()
-      console.log('Kết quả đặt lịch:', responseData)
-
-      toast.success('Đặt lịch hẹn thành công!')
-
-      // Chuyển hướng về trang danh sách lịch hẹn
-      setTimeout(() => {
-        router.push('/dashboard/patient/appointments')
-      }, 1500)
-    } catch (error: any) {
-      console.error('Error creating appointment:', error)
-
-      // Hiển thị thông báo lỗi
-      toast.error(error.message || 'Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.')
-
-      // Tạo một lịch hẹn giả lập để demo
-      if (confirm('Không thể kết nối với API hoặc API trả về lỗi. Bạn có muốn tạo lịch hẹn giả lập để demo không?')) {
-        toast.success('Đã tạo lịch hẹn giả lập thành công!')
+        // Chuyển hướng về trang danh sách lịch hẹn
         setTimeout(() => {
           router.push('/dashboard/patient/appointments')
         }, 1500)
+      } catch (apiError: any) {
+        console.error('Lỗi khi gọi API createAppointment:', apiError)
+
+        // Xử lý lỗi từ API
+        if (apiError.response) {
+          console.error('Response status:', apiError.response.status)
+          console.error('Response data:', apiError.response.data)
+
+          // Hiển thị thông báo lỗi chi tiết
+          let errorMessage = 'Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.'
+
+          if (apiError.response.data?.detail) {
+            errorMessage = apiError.response.data.detail
+          } else if (apiError.response.data?.time_slot_id) {
+            errorMessage = `Lỗi khung giờ: ${apiError.response.data.time_slot_id}`
+          } else if (apiError.response.data?.patient_id) {
+            errorMessage = `Lỗi bệnh nhân: ${apiError.response.data.patient_id}`
+          } else if (typeof apiError.response.data === 'string') {
+            errorMessage = apiError.response.data
+          } else if (typeof apiError.response.data === 'object') {
+            errorMessage = JSON.stringify(apiError.response.data)
+          }
+
+          toast.error(errorMessage)
+        } else if (apiError.message) {
+          toast.error(`Lỗi: ${apiError.message}`)
+        } else {
+          toast.error('Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.')
+        }
+
+        throw apiError // Re-throw để xử lý ở catch bên ngoài nếu cần
       }
+    } catch (error: any) {
+      console.error('Error creating appointment:', error)
+
+      // Hiển thị thông báo lỗi chi tiết
+      let errorMessage = 'Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.'
+
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+
+        // Xử lý các trường hợp lỗi cụ thể
+        if (error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.time_slot_id) {
+          errorMessage = `Lỗi khung giờ: ${error.response.data.time_slot_id}`;
+        } else if (error.response.data.patient_id) {
+          errorMessage = `Lỗi bệnh nhân: ${error.response.data.patient_id}`;
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (typeof error.response.data === 'object') {
+          errorMessage = JSON.stringify(error.response.data);
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false)
     }
@@ -499,7 +696,49 @@ export default function SimpleAppointmentBooking() {
                   </div>
                 ) : getDoctorsForSelectedDate().length === 0 ? (
                   <div className="text-center p-4 border rounded-md bg-muted/30">
-                    <p className="text-muted-foreground">Không có bác sĩ nào có lịch trống vào ngày đã chọn</p>
+                    <p className="text-muted-foreground">Không có bác sĩ nào thuộc khoa {departments.find(d => d.id === selectedDepartment)?.name} có lịch trống vào ngày {format(selectedDate, 'dd/MM/yyyy')}</p>
+                    <div className="flex flex-col gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDate(undefined);
+                        }}
+                      >
+                        Chọn ngày khác
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDepartment("");
+                        }}
+                      >
+                        Chọn khoa khác
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          // Hiển thị tất cả bác sĩ có lịch trống, bất kể khoa nào
+                          const doctorsWithAvailability = doctors.filter(doctor =>
+                            doctor.available_dates?.some((dateStr: string) => {
+                              const date = parseISO(dateStr)
+                              return isSameDay(date, selectedDate)
+                            })
+                          )
+
+                          if (doctorsWithAvailability.length > 0) {
+                            toast.info(`Hiển thị ${doctorsWithAvailability.length} bác sĩ có lịch trống vào ngày đã chọn, bất kể khoa nào`)
+                            setDoctors(doctorsWithAvailability)
+                          } else {
+                            toast.error("Không tìm thấy bác sĩ nào có lịch trống vào ngày đã chọn")
+                          }
+                        }}
+                      >
+                        Xem tất cả bác sĩ có lịch trống
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <Select
@@ -513,6 +752,8 @@ export default function SimpleAppointmentBooking() {
                       {getDoctorsForSelectedDate().map((doctor) => (
                         <SelectItem key={doctor.id} value={doctor.id.toString()}>
                           {doctor.name} - {doctor.specialty}
+                          {doctor.department && doctor.department !== selectedDepartment &&
+                            ` (${departments.find(d => d.id === doctor.department)?.name || doctor.department})`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -533,9 +774,77 @@ export default function SimpleAppointmentBooking() {
                   <div className="text-center p-4 border rounded-md bg-muted/30">
                     <p className="text-muted-foreground">
                       {timeSlots.length > 0 && filterPastTimeSlots(timeSlots).length === 0
-                        ? "Không có khung giờ khả dụng vào thời điểm hiện tại. Vui lòng chọn ngày khác."
-                        : "Không có khung giờ trống vào ngày đã chọn"}
+                        ? `Tất cả khung giờ của bác sĩ ${doctors.find(d => d.id.toString() === selectedDoctor)?.name} vào ngày ${format(selectedDate, 'dd/MM/yyyy')} đã qua. Vui lòng chọn ngày khác.`
+                        : `Không có khung giờ trống cho bác sĩ ${doctors.find(d => d.id.toString() === selectedDoctor)?.name} vào ngày ${format(selectedDate, 'dd/MM/yyyy')}`}
                     </p>
+                    <div className="flex flex-col gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDate(undefined);
+                          setSelectedDoctor("");
+                          setSelectedTimeSlot("");
+                        }}
+                      >
+                        Chọn ngày khác
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDoctor("");
+                          setSelectedTimeSlot("");
+                        }}
+                      >
+                        Chọn bác sĩ khác
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={async () => {
+                          // Tìm bác sĩ khác có lịch trống vào ngày đã chọn
+                          setIsLoading(true);
+                          try {
+                            const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+
+                            // Lấy danh sách bác sĩ có lịch trống vào ngày đã chọn
+                            const availableDoctors = await appointmentService.getAvailableDoctors(formattedDate, formattedDate, {});
+
+                            if (availableDoctors.length > 0) {
+                              // Lọc ra các bác sĩ khác với bác sĩ hiện tại
+                              const otherDoctors = availableDoctors.filter(doctor => doctor.id.toString() !== selectedDoctor);
+
+                              if (otherDoctors.length > 0) {
+                                toast.success(`Tìm thấy ${otherDoctors.length} bác sĩ khác có lịch trống vào ngày ${format(selectedDate, 'dd/MM/yyyy')}`);
+
+                                // Cập nhật danh sách bác sĩ
+                                setDoctors(prevDoctors => {
+                                  // Lọc ra bác sĩ hiện tại
+                                  const currentDoctor = prevDoctors.find(d => d.id.toString() === selectedDoctor);
+                                  // Kết hợp bác sĩ hiện tại với các bác sĩ có lịch trống
+                                  return currentDoctor ? [currentDoctor, ...otherDoctors] : otherDoctors;
+                                });
+
+                                // Reset bác sĩ đã chọn
+                                setSelectedDoctor("");
+                              } else {
+                                toast.error("Không tìm thấy bác sĩ khác có lịch trống vào ngày đã chọn");
+                              }
+                            } else {
+                              toast.error("Không tìm thấy bác sĩ nào có lịch trống vào ngày đã chọn");
+                            }
+                          } catch (error) {
+                            console.error("Error finding available doctors:", error);
+                            toast.error("Có lỗi xảy ra khi tìm kiếm bác sĩ có lịch trống");
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }}
+                      >
+                        Tìm bác sĩ khác có lịch trống
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <Tabs defaultValue="all">

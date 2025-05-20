@@ -161,6 +161,49 @@ const LaboratoryService = {
     const response = await apiClient.post("/api/lab-notifications/", data)
     return response.data
   },
+
+  // Lấy xét nghiệm của bệnh nhân hiện tại
+  async getPatientLabTests(): Promise<LabTest[]> {
+    try {
+      // Lấy thông tin người dùng từ localStorage
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        console.error("User information not found in localStorage");
+        return [];
+      }
+
+      const user = JSON.parse(userStr);
+      const patientId = user.id;
+
+      // Gọi API để lấy xét nghiệm của bệnh nhân
+      console.log(`Fetching lab tests for patient ${patientId}`);
+      const response = await apiClient.get(`/api/lab-tests/?patient_id=${patientId}`);
+      console.log("Lab tests API response:", response.data);
+
+      // Kiểm tra dữ liệu trả về có hợp lệ không
+      if (!response.data) {
+        console.error("API response data is null or undefined");
+        return [];
+      }
+
+      // Xử lý dữ liệu trả về
+      let labTests: LabTest[] = [];
+
+      // API trả về dữ liệu dạng phân trang (pagination)
+      if (response.data && response.data.results) {
+        labTests = response.data.results;
+      }
+      // Nếu không có trường results, trả về dữ liệu nguyên bản
+      else if (Array.isArray(response.data)) {
+        labTests = response.data;
+      }
+
+      return labTests;
+    } catch (error) {
+      console.error("Error fetching patient lab tests:", error);
+      return [];
+    }
+  },
 }
 
 export default LaboratoryService

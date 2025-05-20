@@ -21,4 +21,5 @@ urlpatterns = [
     path('create-from-lab-test/', InvoiceCreationViewSet.as_view({'post': 'from_lab_test'}), name='create-from-lab-test'),
     path('create-from-prescription/', InvoiceCreationViewSet.as_view({'post': 'from_prescription'}), name='create-from-prescription'),
     path('create-from-medical-record/', InvoiceCreationViewSet.as_view({'post': 'from_medical_record'}), name='create-from-medical-record'),
+    path('create-from-encounter/', InvoiceCreationViewSet.as_view({'post': 'from_encounter'}), name='create-from-encounter'),
 ]

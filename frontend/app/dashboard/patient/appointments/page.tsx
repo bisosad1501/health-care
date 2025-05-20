@@ -16,12 +16,14 @@ export default function PatientAppointmentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Lịch hẹn" description="Quản lý các cuộc hẹn khám bệnh của bạn">
-        <Link href="/dashboard/patient/appointments/new">
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Đặt lịch hẹn
-          </Button>
-        </Link>
+        <div className="flex space-x-2">
+          <Link href="/dashboard/patient/appointments/simple-booking">
+            <Button size="sm" variant="default">
+              <Plus className="mr-2 h-4 w-4" />
+              Đặt lịch hẹn đơn giản
+            </Button>
+          </Link>
+        </div>
       </PageHeader>
 
       <div className="flex items-center justify-between">
