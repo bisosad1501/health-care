@@ -1,0 +1,102 @@
+[
+  {
+    "model": "ai.aimodel",
+    "pk": 1,
+    "fields": {
+      "name": "GPT-3.5 Turbo",
+      "provider": "openai",
+      "model_version": "gpt-3.5-turbo",
+      "capabilities": ["text_generation", "conversation", "medical_qa"],
+      "max_tokens": 4096,
+      "cost_per_token": 0.0015,
+      "is_active": true,
+      "configuration": {
+        "temperature": 0.7,
+        "max_tokens": 1000,
+        "top_p": 1.0,
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0
+      }
+    }
+  },
+  {
+    "model": "ai.aimodel",
+    "pk": 2,
+    "fields": {
+      "name": "GPT-4",
+      "provider": "openai",
+      "model_version": "gpt-4",
+      "capabilities": ["text_generation", "conversation", "medical_qa", "complex_reasoning"],
+      "max_tokens": 8192,
+      "cost_per_token": 0.03,
+      "is_active": true,
+      "configuration": {
+        "temperature": 0.6,
+        "max_tokens": 1500,
+        "top_p": 1.0,
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0
+      }
+    }
+  },
+  {
+    "model": "ai.aiprompttemplate",
+    "pk": 1,
+    "fields": {
+      "name": "General Health Query",
+      "description": "Template for general health-related questions",
+      "template_text": "You are a helpful healthcare assistant. The user is asking about: {{query}}. Please provide accurate, helpful information while emphasizing that this is for informational purposes only and not a substitute for professional medical advice. User context: {{user_context}}",
+      "category": "general",
+      "variables": {
+        "required": ["query"],
+        "optional": ["user_context"]
+      },
+      "is_active": true
+    }
+  },
+  {
+    "model": "ai.aiprompttemplate",
+    "pk": 2,
+    "fields": {
+      "name": "Symptom Analysis",
+      "description": "Template for analyzing symptoms and providing guidance",
+      "template_text": "You are a healthcare assistant helping to analyze symptoms. The user reports the following symptoms: {{symptoms}}. Duration: {{duration}}. Severity: {{severity}}. Please provide:\n1. Possible causes\n2. Recommended actions\n3. When to seek medical attention\n4. Home remedies (if appropriate)\n\nAlways include a disclaimer that this is not a medical diagnosis and professional consultation is recommended.",
+      "category": "symptoms",
+      "variables": {
+        "required": ["symptoms"],
+        "optional": ["duration", "severity", "medical_history"]
+      },
+      "is_active": true
+    }
+  },
+  {
+    "model": "ai.aiprompttemplate",
+    "pk": 3,
+    "fields": {
+      "name": "Medication Information",
+      "description": "Template for providing medication information",
+      "template_text": "You are a healthcare assistant providing information about medications. The user is asking about: {{medication_name}}. Please provide:\n1. What this medication is used for\n2. Common side effects\n3. Important precautions\n4. Drug interactions to be aware of\n\nAlways emphasize that patients should follow their doctor's instructions and consult their healthcare provider for personalized advice.",
+      "category": "medication",
+      "variables": {
+        "required": ["medication_name"],
+        "optional": ["user_medications", "conditions"]
+      },
+      "is_active": true
+    }
+  },
+  {
+    "model": "ai.aiprompttemplate",
+    "pk": 4,
+    "fields": {
+      "name": "Emergency Assessment",
+      "description": "Template for emergency situations",
+      "template_text": "IMPORTANT: This appears to be a potential emergency situation. The user reports: {{emergency_symptoms}}.\n\nFor any serious symptoms like chest pain, difficulty breathing, severe bleeding, loss of consciousness, or severe allergic reactions, immediately advise the user to:\n1. Call emergency services (911)\n2. Go to the nearest emergency room\n3. Do not delay seeking immediate medical attention\n\nProvide brief first aid guidance only if appropriate and safe.",
+      "category": "emergency",
+      "variables": {
+        "required": ["emergency_symptoms"],
+        "optional": ["duration", "severity"]
+      },
+      "is_active": true
+    }
+  }
+]

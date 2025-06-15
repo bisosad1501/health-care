@@ -1,0 +1,101 @@
+{
+  "categories": [
+    {
+      "name": "Thông Tin Y Tế",
+      "category_type": "DISEASE",
+      "description": "Thông tin y tế từ nguồn uy tín quốc tế"
+    },
+    {
+      "name": "Thông Tin Y Tế WHO",
+      "category_type": "DISEASE",
+      "description": "Thông tin từ Tổ chức Y tế Thế giới"
+    },
+    {
+      "name": "Bệnh Tim Mạch",
+      "category_type": "DISEASE",
+      "description": "Các bệnh lý tim mạch"
+    },
+    {
+      "name": "Bệnh Truyền Nhiễm",
+      "category_type": "DISEASE",
+      "description": "Các bệnh truyền nhiễm"
+    },
+    {
+      "name": "Triệu Chứng Thường Gặp",
+      "category_type": "SYMPTOM",
+      "description": "Các triệu chứng thường gặp"
+    }
+  ],
+  "knowledge_entries": [],
+  "diseases": [
+    {
+      "name": "Tăng huyết áp",
+      "icd_code": "I10",
+      "description": "Bệnh lý tim mạch phổ biến nhất tại Việt Nam, ảnh hưởng đến 25.1% dân số trưởng thành",
+      "causes": "Di truyền, lối sống không lành mạnh, ăn nhiều muối, ít vận động, stress",
+      "symptoms": "Thường không có triệu chứng rõ ràng ở giai đoạn đầu, có thể đau đầu, chóng mặt, mệt mỏi",
+      "treatment": "Thay đổi lối sống, thuốc hạ áp theo chỉ định bác sĩ, theo dõi thường xuyên",
+      "prevention": "Ăn ít muối (<5g/ngày), tập thể dục đều đặn, kiểm soát cân nặng, không hút thuốc",
+      "category": "Bệnh Tim Mạch",
+      "severity_level": "MODERATE",
+      "is_chronic": true
+    },
+    {
+      "name": "Viêm gan B",
+      "icd_code": "B18.1",
+      "description": "Bệnh truyền nhiễm phổ biến tại Việt Nam, khoảng 7-8% dân số mang virus",
+      "causes": "Virus viêm gan B (HBV), lây truyền qua đường máu, tình dục, từ mẹ sang con",
+      "symptoms": "Mệt mỏi, chán ăn, buồn nôn, đau bụng, vàng da, nước tiểu sẫm màu",
+      "treatment": "Thuốc kháng virus, theo dõi chức năng gan, chế độ ăn uống phù hợp",
+      "prevention": "Tiêm vaccine, tránh dùng chung kim tiêm, quan hệ tình dục an toàn",
+      "category": "Bệnh Truyền Nhiễm",
+      "severity_level": "SEVERE",
+      "is_contagious": true
+    }
+  ],
+  "symptoms": [
+    {
+      "name": "Sốt",
+      "description": "Thân nhiệt tăng cao trên 37.5°C, phản ứng của cơ thể với nhiễm trùng hoặc bệnh lý",
+      "body_part": "Toàn thân",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Nhiễm virus, nhiễm khuẩn, sốt rét, sốt xuất huyết",
+      "when_to_see_doctor": "Sốt trên 39°C, sốt kéo dài >3 ngày, kèm khó thở, co giật",
+      "home_remedies": "Uống nhiều nước, nghỉ ngơi, chườm mát, theo dõi thân nhiệt",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Ho",
+      "description": "Phản xạ để loại bỏ chất lạ khỏi đường hô hấp",
+      "body_part": "Hệ hô hấp",
+      "urgency_level": "LOW",
+      "possible_causes": "Cảm lạnh, viêm phổi, dị ứng, lao phổi, COVID-19",
+      "when_to_see_doctor": "Ho ra máu, ho kéo dài >3 tuần, kèm sốt cao, khó thở",
+      "home_remedies": "Uống nước ấm, nghỉ ngọi, tránh khói bụi, súc họng nước muối",
+      "category": "Triệu Chứng Thường Gặp"
+    }
+  ],
+  "medical_terms": [],
+  "tags": [
+    {
+      "name": "medlineplus",
+      "description": "Thông tin từ MedlinePlus"
+    },
+    {
+      "name": "who",
+      "description": "Thông tin từ WHO"
+    },
+    {
+      "name": "public-health",
+      "description": "Y tế công cộng"
+    },
+    {
+      "name": "international-health",
+      "description": "Y tế quốc tế"
+    },
+    {
+      "name": "vietnam-health",
+      "description": "Y tế Việt Nam"
+    }
+  ]
+}

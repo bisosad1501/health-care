@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  chatbot-service:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/healthcare_chatbot
+      - REDIS_URL=redis://redis:6379/1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEBUG=False
+    volumes:
+      - ./logs:/app/logs
+      - ./media:/app/media
+    depends_on:
+      - postgres
+      - redis
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py load_knowledge_data &&
+             python manage.py build_search_index &&
+             python manage.py collectstatic --noinput &&
+             gunicorn chatbot_service.wsgi:application --bind 0.0.0.0:8000"
+
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=healthcare_chatbot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5434:5432"
+
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+  celery:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/healthcare_chatbot
+      - REDIS_URL=redis://redis:6379/1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    command: celery -A chatbot_service worker -l info
+
+  celery-beat:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/healthcare_chatbot
+      - REDIS_URL=redis://redis:6379/1
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    command: celery -A chatbot_service beat -l info
+
+volumes:
+  postgres_data:
+  redis_data:

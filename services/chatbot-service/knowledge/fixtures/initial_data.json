@@ -1,0 +1,210 @@
+[
+  {
+    "model": "knowledge.knowledgecategory",
+    "pk": 1,
+    "fields": {
+      "name": "General Health",
+      "description": "General health information and common medical questions",
+      "icon": "health",
+      "is_active": true,
+      "sort_order": 1
+    }
+  },
+  {
+    "model": "knowledge.knowledgecategory",
+    "pk": 2,
+    "fields": {
+      "name": "Symptoms",
+      "description": "Information about various symptoms and their potential causes",
+      "icon": "symptoms",
+      "is_active": true,
+      "sort_order": 2
+    }
+  },
+  {
+    "model": "knowledge.knowledgecategory",
+    "pk": 3,
+    "fields": {
+      "name": "Medications",
+      "description": "Information about medications, dosages, and interactions",
+      "icon": "medication",
+      "is_active": true,
+      "sort_order": 3
+    }
+  },
+  {
+    "model": "knowledge.knowledgecategory",
+    "pk": 4,
+    "fields": {
+      "name": "Preventive Care",
+      "description": "Information about preventive healthcare measures",
+      "icon": "prevention",
+      "is_active": true,
+      "sort_order": 4
+    }
+  },
+  {
+    "model": "knowledge.knowledgeentry",
+    "pk": 1,
+    "fields": {
+      "category": 1,
+      "title": "What is blood pressure?",
+      "content": "Blood pressure is the force of your blood pushing against the walls of your arteries. Each time your heart beats, it pumps blood into the arteries. Your blood pressure is highest when your heart beats, pumping the blood. This is called systolic pressure. When your heart is at rest, between beats, your blood pressure falls. This is called diastolic pressure.",
+      "keywords": ["blood pressure", "systolic", "diastolic", "heart", "arteries"],
+      "is_active": true,
+      "priority": 5,
+      "metadata": {
+        "source": "Medical textbook",
+        "last_reviewed": "2024-01-01"
+      }
+    }
+  },
+  {
+    "model": "knowledge.knowledgeentry",
+    "pk": 2,
+    "fields": {
+      "category": 2,
+      "title": "Common cold symptoms",
+      "content": "Common symptoms of a cold include runny or stuffy nose, sore throat, cough, congestion, slight body aches, sneezing, and low-grade fever. Cold symptoms usually start 1-3 days after exposure to a cold virus.",
+      "keywords": ["cold", "runny nose", "sore throat", "cough", "fever", "congestion"],
+      "is_active": true,
+      "priority": 4,
+      "metadata": {
+        "source": "CDC guidelines",
+        "last_reviewed": "2024-01-01"
+      }
+    }
+  },
+  {
+    "model": "knowledge.knowledgeentry",
+    "pk": 3,
+    "fields": {
+      "category": 4,
+      "title": "Importance of regular exercise",
+      "content": "Regular physical activity is one of the most important things you can do for your health. Being physically active can improve your brain health, help manage weight, reduce the risk of disease, strengthen bones and muscles, and improve your ability to do everyday activities.",
+      "keywords": ["exercise", "physical activity", "health", "weight management", "disease prevention"],
+      "is_active": true,
+      "priority": 3,
+      "metadata": {
+        "source": "WHO guidelines",
+        "last_reviewed": "2024-01-01"
+      }
+    }
+  },
+  {
+    "model": "knowledge.diseaseinformation",
+    "pk": 1,
+    "fields": {
+      "name": "Hypertension",
+      "description": "High blood pressure, also called hypertension, is blood pressure that is higher than normal.",
+      "symptoms": ["headache", "shortness of breath", "nosebleeds"],
+      "causes": ["poor diet", "lack of exercise", "stress", "genetics"],
+      "treatments": ["lifestyle changes", "medication", "regular monitoring"],
+      "prevention_tips": ["maintain healthy weight", "exercise regularly", "eat healthy diet", "limit alcohol"],
+      "severity_level": "moderate",
+      "is_chronic": true,
+      "icd_code": "I10"
+    }
+  },
+  {
+    "model": "knowledge.diseaseinformation",
+    "pk": 2,
+    "fields": {
+      "name": "Common Cold",
+      "description": "A viral infection of your nose and throat (upper respiratory tract).",
+      "symptoms": ["runny nose", "sore throat", "cough", "congestion", "sneezing"],
+      "causes": ["viral infection", "rhinovirus", "coronavirus"],
+      "treatments": ["rest", "fluids", "over-the-counter medications"],
+      "prevention_tips": ["wash hands frequently", "avoid close contact with sick people", "don't touch face"],
+      "severity_level": "mild",
+      "is_chronic": false,
+      "icd_code": "J00"
+    }
+  },
+  {
+    "model": "knowledge.symptominformation",
+    "pk": 1,
+    "fields": {
+      "name": "Headache",
+      "description": "Pain in your head or face that's often described as a pressure that's throbbing, constant, sharp or dull.",
+      "possible_causes": ["tension", "migraine", "dehydration", "stress", "eye strain"],
+      "severity_levels": ["mild", "moderate", "severe"],
+      "when_to_seek_help": "Seek immediate medical attention if you have a sudden, severe headache, headache with fever, stiff neck, confusion, or vision changes.",
+      "home_remedies": ["rest", "hydration", "cold or warm compress", "massage"],
+      "body_part": "head"
+    }
+  },
+  {
+    "model": "knowledge.symptominformation",
+    "pk": 2,
+    "fields": {
+      "name": "Fever",
+      "description": "A temporary increase in your body temperature, often due to an illness.",
+      "possible_causes": ["viral infection", "bacterial infection", "heat exhaustion", "certain medications"],
+      "severity_levels": ["low-grade (99-101°F)", "moderate (101-103°F)", "high (103°F+)"],
+      "when_to_seek_help": "Seek medical attention if fever is over 103°F, lasts more than 3 days, or accompanies severe symptoms.",
+      "home_remedies": ["rest", "fluids", "cool baths", "fever reducers like acetaminophen"],
+      "body_part": "whole body"
+    }
+  },
+  {
+    "model": "knowledge.medicalterm",
+    "pk": 1,
+    "fields": {
+      "term": "Hypertension",
+      "definition": "High blood pressure; a condition in which the force of the blood against the artery walls is too high.",
+      "pronunciation": "hy-per-TEN-shun",
+      "synonyms": ["high blood pressure"],
+      "category": "cardiovascular",
+      "is_common": true
+    }
+  },
+  {
+    "model": "knowledge.medicalterm",
+    "pk": 2,
+    "fields": {
+      "term": "Acute",
+      "definition": "Describes a condition that begins suddenly and is usually severe.",
+      "pronunciation": "uh-KYOOT",
+      "synonyms": ["sudden", "severe"],
+      "category": "general",
+      "is_common": true
+    }
+  },
+  {
+    "model": "knowledge.chatbotresponse",
+    "pk": 1,
+    "fields": {
+      "trigger_keywords": ["hello", "hi", "hey", "good morning"],
+      "response_text": "Hello! I'm your healthcare assistant. How can I help you today? I can provide information about symptoms, medications, general health topics, or help you understand medical terms.",
+      "intent": "greeting",
+      "confidence_threshold": 0.8,
+      "is_active": true,
+      "follow_up_questions": ["What symptoms are you experiencing?", "Do you have any health questions?", "Would you like information about a specific condition?"]
+    }
+  },
+  {
+    "model": "knowledge.chatbotresponse",
+    "pk": 2,
+    "fields": {
+      "trigger_keywords": ["headache", "head pain", "migraine"],
+      "response_text": "I understand you're experiencing a headache. Headaches can have various causes including tension, dehydration, stress, or eye strain. For mild headaches, you can try resting, staying hydrated, or applying a cold/warm compress. However, if you have a sudden severe headache, headache with fever, or vision changes, please seek immediate medical attention.",
+      "intent": "symptom_inquiry",
+      "confidence_threshold": 0.7,
+      "is_active": true,
+      "follow_up_questions": ["How long have you had this headache?", "On a scale of 1-10, how severe is the pain?", "Have you tried any remedies?"]
+    }
+  },
+  {
+    "model": "knowledge.chatbotresponse",
+    "pk": 3,
+    "fields": {
+      "trigger_keywords": ["emergency", "urgent", "severe pain", "chest pain", "difficulty breathing"],
+      "response_text": "This sounds like it could be a medical emergency. Please seek immediate medical attention by calling emergency services or going to the nearest emergency room. Do not delay seeking professional medical help.",
+      "intent": "emergency",
+      "confidence_threshold": 0.9,
+      "is_active": true,
+      "follow_up_questions": []
+    }
+  }
+]

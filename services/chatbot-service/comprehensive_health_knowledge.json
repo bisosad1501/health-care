@@ -1,0 +1,549 @@
+{
+  "categories": [
+    {
+      "name": "Bệnh Tim Mạch",
+      "category_type": "DISEASE",
+      "description": "Các bệnh lý tim mạch phổ biến tại Việt Nam"
+    },
+    {
+      "name": "Bệnh Truyền Nhiễm",
+      "category_type": "DISEASE", 
+      "description": "Các bệnh truyền nhiễm và dịch bệnh"
+    },
+    {
+      "name": "Bệnh Nội Tiết",
+      "category_type": "DISEASE",
+      "description": "Các bệnh lý nội tiết như tiểu đường, tuyến giáp"
+    },
+    {
+      "name": "Bệnh Hô Hấp",
+      "category_type": "DISEASE",
+      "description": "Các bệnh lý về đường hô hấp"
+    },
+    {
+      "name": "Bệnh Tiêu Hóa",
+      "category_type": "DISEASE",
+      "description": "Các bệnh lý về hệ tiêu hóa"
+    },
+    {
+      "name": "Triệu Chứng Thường Gặp",
+      "category_type": "SYMPTOM",
+      "description": "Các triệu chứng hay gặp trong thực tế"
+    },
+    {
+      "name": "Triệu Chứng Cấp Cứu",
+      "category_type": "SYMPTOM", 
+      "description": "Các triệu chứng nguy hiểm cần cấp cứu"
+    },
+    {
+      "name": "Điều Trị & Thuốc",
+      "category_type": "TREATMENT",
+      "description": "Thông tin về điều trị và sử dụng thuốc"
+    },
+    {
+      "name": "Phòng Ngừa",
+      "category_type": "PREVENTION",
+      "description": "Các biện pháp phòng ngừa bệnh tật"
+    },
+    {
+      "name": "Dinh Dưỡng & Sức Khỏe",
+      "category_type": "NUTRITION",
+      "description": "Thông tin về dinh dưỡng và lối sống lành mạnh"
+    },
+    {
+      "name": "Câu Hỏi Thường Gặp",
+      "category_type": "FAQ",
+      "description": "Các câu hỏi thường gặp về sức khỏe"
+    },
+    {
+      "name": "Cấp Cứu Y Tế",
+      "category_type": "EMERGENCY",
+      "description": "Hướng dẫn xử lý cấp cứu y tế"
+    }
+  ],
+  "knowledge_entries": [
+    {
+      "title": "Nhận biết và xử lý cơn đau tim cấp tính",
+      "content": "Cơn đau tim (nhồi máu cơ tim) là tình trạng cấp cứu nghiêm trọng cần xử lý ngay lập tức.\\n\\n**Dấu hiệu nhận biết:**\\n• Đau ngực dữ dội, như bị nghiền nát, kéo dài >15 phút\\n• Đau lan ra cánh tay trái, vai, cổ, hàm, lưng\\n• Khó thở, thở gấp\\n• Buồn nôn, nôn, đổ mồ hôi lạnh\\n• Chóng mặt, yếu\\n• Cảm giác sắp chết\\n\\n**Xử lý cấp cứu:**\\n1. Gọi cấp cứu 115 ngay lập tức\\n2. Cho bệnh nhân ngồi hoặc nằm thoải mái\\n3. Nới lỏng quần áo\\n4. Nếu có sẵn, cho nhai 1 viên aspirin 300mg\\n5. Theo dõi ý thức, hô hấp, mạch\\n6. Chuẩn bị hồi sức tim phổi nếu cần\\n\\n**Thời gian vàng:** 90 phút đầu là quan trọng nhất để cứu sống bệnh nhân.",
+      "summary": "Hướng dẫn nhận biết và xử lý cấp cứu cơn đau tim",
+      "category": "Cấp Cứu Y Tế",
+      "content_type": "GUIDE",
+      "difficulty_level": "BASIC",
+      "keywords": "đau tim, nhồi máu cơ tim, cấp cứu, đau ngực, khó thở",
+      "author": "Bộ Y tế Việt Nam",
+      "source": "Hướng dẫn cấp cứu tim mạch - Bộ Y tế",
+      "reliability_score": 0.98,
+      "is_verified": true,
+      "tags": ["cấp-cứu", "tim-mạch", "đau-ngực"]
+    },
+    {
+      "title": "Chế độ ăn uống cho người bệnh tiểu đường",
+      "content": "Chế độ ăn uống đóng vai trò quan trọng trong kiểm soát đường huyết cho người bệnh tiểu đường.\\n\\n**Nguyên tắc cơ bản:**\\n• Ăn đúng giờ, đều đặn 3 bữa chính + 2-3 bữa phụ\\n• Kiểm soát lượng carbohydrate\\n• Chọn carbohydrate phức tạp (gạo lức, yến mạch)\\n• Tăng chất xơ từ rau xanh, trái cây\\n• Protein nạc: cá, gà, đậu\\n• Hạn chế đường, mật ong, nước ngọt\\n\\n**Thực phẩm nên ăn:**\\n• Rau xanh: rau muống, cải xoăn, brokoli\\n• Trái cây ít đường: ổi, táo, cam\\n• Cá: cá thu, cá hồi, cá ngừ\\n• Ngũ cốc nguyên hạt\\n• Các loại đậu\\n\\n**Thực phẩm nên hạn chế:**\\n• Đồ ngọt, bánh kẹo\\n• Nước ngọt có ga\\n• Gạo trắng, bánh mì trắng\\n• Thực phẩm chiên rán\\n• Đồ uống có cồn\\n\\n**Lưu ý:** Theo dõi đường huyết thường xuyên và điều chỉnh chế độ ăn phù hợp.",
+      "summary": "Hướng dẫn chế độ ăn uống khoa học cho người bệnh tiểu đường",
+      "category": "Dinh Dưỡng & Sức Khỏe",
+      "content_type": "GUIDE",
+      "difficulty_level": "BASIC",
+      "keywords": "tiểu đường, chế độ ăn, đường huyết, dinh dưỡng",
+      "author": "Hội Nội tiết Việt Nam",
+      "source": "Khuyến cáo dinh dưỡng cho người tiểu đường",
+      "reliability_score": 0.95,
+      "is_verified": true,
+      "tags": ["tiểu-đường", "dinh-dưỡng", "chế-độ-ăn"]
+    },
+    {
+      "title": "Phòng ngừa và điều trị viêm gan B",
+      "content": "Viêm gan B là bệnh truyền nhiễm nghiêm trọng, phổ biến tại Việt Nam với tỷ lệ nhiễm khoảng 7-8% dân số.\\n\\n**Đường lây truyền:**\\n• Qua đường máu: dùng chung kim tiêm, dụng cụ y tế\\n• Quan hệ tình dục không an toàn\\n• Từ mẹ sang con khi sinh\\n• Tiếp xúc với máu, dịch cơ thể của người bệnh\\n\\n**Triệu chứng:**\\n• Giai đoạn cấp: mệt mỏi, chán ăn, buồn nôn, đau bụng\\n• Vàng da, vàng mắt\\n• Nước tiểu sẫm màu, phân nhạt màu\\n• Sốt nhẹ\\n\\n**Phòng ngừa:**\\n• Tiêm vaccine viêm gan B đầy đủ (3 mũi)\\n• Không dùng chung kim tiêm, dao cạo\\n• Quan hệ tình dục an toàn\\n• Kiểm tra sức khỏe định kỳ\\n• Xét nghiệm máu trước khi hiến máu\\n\\n**Điều trị:**\\n• Thuốc kháng virus: Tenofovir, Entecavir\\n• Theo dõi chức năng gan định kỳ\\n• Chế độ ăn uống phù hợp\\n• Tránh rượu bia hoàn toàn\\n\\n**Lưu ý:** Điều trị sớm giúp ngăn ngừa xơ gan và ung thư gan.",
+      "summary": "Thông tin toàn diện về phòng ngừa và điều trị viêm gan B",
+      "category": "Bệnh Truyền Nhiễm",
+      "content_type": "ARTICLE",
+      "difficulty_level": "INTERMEDIATE",
+      "keywords": "viêm gan B, vaccine, truyền nhiễm, phòng ngừa",
+      "author": "Viện Pasteur TP.HCM",
+      "source": "Chương trình phòng chống viêm gan virus",
+      "reliability_score": 0.97,
+      "is_verified": true,
+      "tags": ["viêm-gan", "vaccine", "truyền-nhiễm"]
+    },
+    {
+      "title": "Hướng dẫn sử dụng thuốc hạ huyết áp an toàn",
+      "content": "Thuốc hạ huyết áp cần được sử dụng đúng cách để đạt hiệu quả tốt nhất và tránh tác dụng phụ.\\n\\n**Các nhóm thuốc chính:**\\n\\n**1. Thuốc ức chế ACE:**\\n• Tên thuốc: Captopril, Enalapril, Lisinopril\\n• Tác dụng: Giãn mạch máu, bảo vệ tim thận\\n• Tác dụng phụ: Ho khan (10-15%), tăng kali máu\\n• Uống: 1-2 lần/ngày, trước ăn 1 giờ\\n\\n**2. Thuốc chẹn thụ thể Angiotensin (ARB):**\\n• Tên thuốc: Losartan, Valsartan, Telmisartan\\n• Ưu điểm: Ít gây ho hơn thuốc ức chế ACE\\n• Uống: 1 lần/ngày, có thể uống cùng thức ăn\\n\\n**3. Thuốc chẹn kênh canxi:**\\n• Tên thuốc: Amlodipine, Nifedipine\\n• Tác dụng: Giãn mạch máu nhanh\\n• Tác dụng phụ: Phù cổ chân, đỏ mặt\\n• Uống: 1 lần/ngày vào buổi sáng\\n\\n**4. Thuốc lợi tiểu:**\\n• Tên thuốc: Hydrochlorothiazide, Indapamide\\n• Tác dụng: Giảm thể tích tuần hoàn\\n• Theo dõi: Điện giải, chức năng thận\\n\\n**Nguyên tắc sử dụng:**\\n• Uống đúng giờ, đúng liều\\n• Không tự ý ngừng thuốc đột ngột\\n• Theo dõi huyết áp tại nhà\\n• Tái khám theo lịch hẹn\\n• Báo cáo tác dụng phụ với bác sĩ",
+      "summary": "Hướng dẫn sử dụng các loại thuốc hạ huyết áp phổ biến",
+      "category": "Điều Trị & Thuốc",
+      "content_type": "GUIDE",
+      "difficulty_level": "INTERMEDIATE",
+      "keywords": "thuốc hạ áp, tăng huyết áp, ACE inhibitor, ARB",
+      "author": "Bệnh viện Tim Hà Nội",
+      "source": "Hướng dẫn sử dụng thuốc tim mạch",
+      "reliability_score": 0.96,
+      "is_verified": true,
+      "tags": ["thuốc", "huyết-áp", "điều-trị"]
+    },
+    {
+      "title": "Cách chăm sóc người bệnh COVID-19 tại nhà",
+      "content": "Hướng dẫn chăm sóc người bệnh COVID-19 có triệu chứng nhẹ tại nhà an toàn.\\n\\n**Triệu chứng nhẹ có thể điều trị tại nhà:**\\n• Sốt dưới 38.5°C\\n• Ho khan, đau họng nhẹ\\n• Mệt mỏi, đau nhức cơ\\n• Mất vị giác, khứu giác\\n• Không khó thở\\n\\n**Cách chăm sóc:**\\n\\n**1. Cách ly:**\\n• Riêng phòng, riêng toilet nếu có thể\\n• Đeo khẩu trang khi tiếp xúc\\n• Giữ khoảng cách >2m\\n• Thông gió tốt\\n\\n**2. Điều trị triệu chứng:**\\n• Sốt: Paracetamol 500mg, 4-6 giờ/lần\\n• Ho: Uống nước ấm, mật ong\\n• Đau họng: Súc họng nước muối\\n• Nghỉ ngơi đầy đủ\\n\\n**3. Theo dõi:**\\n• Đo thân nhiệt 2 lần/ngày\\n• Theo dõi nhịp thở, SpO2 nếu có máy\\n• Ghi nhật ký triệu chứng\\n\\n**4. Dinh dưỡng:**\\n• Uống nhiều nước (2-3 lít/ngày)\\n• Ăn đầy đủ protein, vitamin\\n• Bổ sung vitamin C, D, kẽm\\n\\n**Khi nào cần đến bệnh viện:**\\n• Khó thở, thở nhanh\\n• Đau ngực liên tục\\n• Sốt cao không hạ được\\n• Ý thức lơ mơ\\n• SpO2 <95%\\n\\n**Phòng ngừa lây lan:**\\n• Rửa tay thường xuyên\\n• Khử khuẩn bề mặt\\n• Xử lý rác thải đúng cách\\n• Người chăm sóc đeo bảo hộ đầy đủ",
+      "summary": "Hướng dẫn chăm sóc bệnh nhân COVID-19 triệu chứng nhẹ tại nhà",
+      "category": "Bệnh Truyền Nhiễm",
+      "content_type": "GUIDE",
+      "difficulty_level": "BASIC",
+      "keywords": "COVID-19, chăm sóc tại nhà, cách ly, điều trị",
+      "author": "Bộ Y tế Việt Nam",
+      "source": "Hướng dẫn chăm sóc COVID-19 tại nhà",
+      "reliability_score": 0.98,
+      "is_verified": true,
+      "tags": ["covid-19", "chăm-sóc", "cách-ly"]
+    },
+    {
+      "title": "Tập thể dục an toàn cho người bệnh tim mạch",
+      "content": "Tập thể dục đúng cách giúp cải thiện sức khỏe tim mạch và chất lượng cuộc sống.\\n\\n**Lợi ích của vận động:**\\n• Giảm huyết áp, cholesterol\\n• Cải thiện tuần hoàn máu\\n• Tăng cường cơ tim\\n• Kiểm soát cân nặng\\n• Giảm stress, cải thiện tâm trạng\\n\\n**Nguyên tắc tập luyện:**\\n\\n**1. Khởi động (5-10 phút):**\\n• Đi bộ chậm\\n• Vận động nhẹ các khớp\\n• Giãn cơ nhẹ nhàng\\n\\n**2. Vận động chính (20-40 phút):**\\n• Cường độ vừa phải (có thể nói chuyện khi tập)\\n• Tần số tim mục tiêu: 220 - tuổi x 0.6-0.8\\n• Các hoạt động phù hợp:\\n  - Đi bộ nhanh\\n  - Đạp xe đạp\\n  - Bơi lội\\n  - Aerobic nhẹ\\n\\n**3. Thư giãn (5-10 phút):**\\n• Đi bộ chậm dần\\n• Giãn cơ\\n• Thở sâu\\n\\n**Tần suất khuyến nghị:**\\n• 150 phút/tuần vận động vừa phải\\n• Hoặc 75 phút/tuần vận động mạnh\\n• Chia thành 3-5 lần/tuần\\n• Bài tập sức bền 2 lần/tuần\\n\\n**Dấu hiệu cần dừng tập:**\\n• Đau ngực\\n• Khó thở bất thường\\n• Chóng mặt, mệt quá mức\\n• Nhịp tim không đều\\n• Buồn nôn\\n\\n**Lưu ý quan trọng:**\\n• Tham khảo bác sĩ trước khi bắt đầu\\n• Bắt đầu từ từ, tăng dần\\n• Mang theo thuốc cấp cứu\\n• Tập với bạn bè để an toàn hơn",
+      "summary": "Hướng dẫn tập thể dục an toàn và hiệu quả cho người bệnh tim mạch",
+      "category": "Phòng Ngừa",
+      "content_type": "GUIDE",
+      "difficulty_level": "BASIC",
+      "keywords": "tập thể dục, tim mạch, vận động, phòng ngừa",
+      "author": "Hội Tim mạch học Việt Nam",
+      "source": "Khuyến cáo vận động cho bệnh nhân tim mạch",
+      "reliability_score": 0.94,
+      "is_verified": true,
+      "tags": ["vận-động", "tim-mạch", "phòng-ngừa"]
+    }
+  ],
+  "diseases": [
+    {
+      "name": "Tăng huyết áp",
+      "icd_code": "I10",
+      "description": "Bệnh lý tim mạch phổ biến nhất tại Việt Nam, ảnh hưởng đến 25.1% dân số trưởng thành. Được gọi là 'kẻ giết người thầm lặng' vì thường không có triệu chứng rõ ràng ở giai đoạn đầu.",
+      "causes": "Di truyền (60%), lối sống không lành mạnh, ăn nhiều muối (>5g/ngày), ít vận động, béo phì, stress mãn tính, hút thuốc, uống nhiều rượu bia, tuổi tác",
+      "symptoms": "Thường không có triệu chứng rõ ràng ở giai đoạn đầu. Khi có triệu chứng: đau đầu vùng gáy, chóng mặt, mệt mỏi, hồi hộp, ù tai, khó ngủ, đỏ mặt",
+      "diagnosis": "Đo huyết áp nhiều lần trong các lần khám khác nhau. Theo dõi huyết áp 24 giờ. Xét nghiệm máu, nước tiểu. Siêu âm tim, điện tâm đồ",
+      "treatment": "Thay đổi lối sống (ăn ít muối, tập thể dục, giảm cân). Thuốc hạ áp: ACE inhibitor, ARB, thuốc chẹn kênh canxi, thuốc lợi tiểu. Theo dõi thường xuyên",
+      "prevention": "Ăn ít muối (<5g/ngày), tập thể dục đều đặn 150 phút/tuần, kiểm soát cân nặng, không hút thuốc, hạn chế rượu bia, kiểm soát stress, khám sức khỏe định kỳ",
+      "complications": "Đột quỵ não, nhồi máu cơ tim, suy tim, bệnh thận mãn tính, bệnh động mạch ngoại vi, tổn thương mắt",
+      "prognosis": "Tốt nếu được phát hiện sớm và điều trị đúng cách. Tuân thủ điều trị giúp giảm 40% nguy cơ đột quỵ và 25% nguy cơ nhồi máu cơ tim",
+      "severity_level": "MODERATE",
+      "is_contagious": false,
+      "is_chronic": true,
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "name": "Viêm gan B",
+      "icd_code": "B18.1",
+      "description": "Bệnh truyền nhiễm phổ biến tại Việt Nam với khoảng 7-8% dân số mang virus. Là nguyên nhân hàng đầu gây xơ gan và ung thư gan nguyên phát.",
+      "causes": "Virus viêm gan B (HBV). Lây truyền qua đường máu (dùng chung kim tiêm, dụng cụ y tế), quan hệ tình dục không an toàn, từ mẹ sang con khi sinh",
+      "symptoms": "Giai đoạn cấp: mệt mỏi, chán ăn, buồn nôn, đau bụng phải, sốt nhẹ, vàng da và vàng mắt, nước tiểu sẫm màu, phân nhạt màu. Giai đoạn mãn tính thường không triệu chứng",
+      "diagnosis": "Xét nghiệm máu: HBsAg, Anti-HBs, HBeAg, Anti-HBe, Anti-HBc. Định lượng DNA virus. Siêu âm bụng, đo độ cứng gan. Sinh thiết gan nếu cần",
+      "treatment": "Thuốc kháng virus: Tenofovir, Entecavir điều trị dài hạn. Theo dõi chức năng gan định kỳ 3-6 tháng. Chế độ ăn uống phù hợp, tránh rượu bia hoàn toàn",
+      "prevention": "Tiêm vaccine viêm gan B đầy đủ 3 mũi (0, 1, 6 tháng). Không dùng chung kim tiêm, dao cạo. Quan hệ tình dục an toàn. Xét nghiệm trước khi kết hôn",
+      "complications": "Xơ gan, ung thư gan nguyên phát, suy gan cấp, viêm gan tái phát",
+      "prognosis": "Điều trị sớm với thuốc kháng virus giúp ngăn ngừa tiến triển thành xơ gan và ung thư gan. 90% trẻ em nhiễm sẽ chuyển mãn tính",
+      "severity_level": "SEVERE",
+      "is_contagious": true,
+      "is_chronic": true,
+      "category": "Bệnh Truyền Nhiễm"
+    },
+    {
+      "name": "Tiểu đường type 2",
+      "icd_code": "E11",
+      "description": "Bệnh rối loạn chuyển hóa do tế bào không phản ứng tốt với insulin hoặc không sản xuất đủ insulin. Chiếm 90-95% các trường hợp tiểu đường.",
+      "causes": "Yếu tố di truyền, béo phì, ít vận động, chế độ ăn nhiều đường và tinh bột, tuổi tác trên 45, tiền sử tiểu đường thai kỳ, hội chứng chuyển hóa",
+      "symptoms": "Khát nước nhiều, tiểu nhiều, ăn nhiều nhưng sụt cân, mệt mỏi, nhìn mờ, vết thương lâu lành, nhiễm trùng tái phát",
+      "diagnosis": "Đường huyết lúc đói ≥126 mg/dl (7.0 mmol/l). HbA1c ≥6.5%. Test dung nạp glucose ≥200 mg/dl. Đường huyết bất kỳ ≥200 mg/dl có triệu chứng",
+      "treatment": "Thay đổi lối sống (chế độ ăn, tập thể dục). Thuốc uống: Metformin, Sulfonylurea, DPP-4 inhibitor. Insulin nếu cần. Theo dõi đường huyết thường xuyên",
+      "prevention": "Duy trì cân nặng hợp lý, tập thể dục đều đặn, chế độ ăn lành mạnh ít đường, kiểm soát stress, không hút thuốc, khám sức khỏe định kỳ",
+      "complications": "Bệnh tim mạch, đột quỵ, bệnh thận, tổn thương mắt, tổn thương thần kinh, loét chân tiểu đường, nhiễm trùng",
+      "prognosis": "Kiểm soát tốt giúp sống bình thường. HbA1c <7% giảm đáng kể nguy cơ biến chứng. Cần điều trị suốt đời",
+      "severity_level": "MODERATE",
+      "is_contagious": false,
+      "is_chronic": true,
+      "category": "Bệnh Nội Tiết"
+    },
+    {
+      "name": "Viêm phổi",
+      "icd_code": "J18",
+      "description": "Nhiễm trùng cấp tính của phổi do vi khuẩn, virus hoặc nấm. Có thể nhẹ điều trị ngoại trú hoặc nặng cần nhập viện.",
+      "causes": "Vi khuẩn (Streptococcus pneumoniae, Haemophilus influenzae), virus (cúm, RSV, SARS-CoV-2), nấm, mycoplasma. Yếu tố nguy cơ: tuổi cao, suy giảm miễn dịch",
+      "symptoms": "Ho có đờm, sốt cao, rùng mình, khó thở, đau ngực khi thở, mệt mỏi, đau đầu, buồn nôn. Người già có thể không sốt",
+      "diagnosis": "Khám lâm sàng, nghe phổi có ran ẩm. X-quang ngực thấy thâm nhiễm. Xét nghiệm máu: tăng bạch cầu. Nuôi cấy đờm nếu có thể",
+      "treatment": "Kháng sinh theo nguyên nhân: Amoxicillin, Azithromycin, Ceftriaxone. Điều trị hỗ trợ: hạ sốt, long đờm, bù nước. Thở oxy nếu thiếu oxy",
+      "prevention": "Tiêm vaccine phổi cầu, vaccine cúm hàng năm. Rửa tay thường xuyên, tránh tiếp xúc người bệnh, không hút thuốc, tăng cường sức đề kháng",
+      "complications": "Áp xe phổi, tràn dịch màng phổi, nhiễm khuẩn huyết, suy hô hấp cấp, viêm màng não",
+      "prognosis": "Phần lớn khỏi hoàn toàn với điều trị kịp thời. Tỷ lệ tử vong cao ở người già và có bệnh lý nền",
+      "severity_level": "MODERATE",
+      "is_contagious": true,
+      "is_chronic": false,
+      "category": "Bệnh Hô Hấp"
+    },
+    {
+      "name": "Loét dạ dày tá tràng",
+      "icd_code": "K27",
+      "description": "Tổn thương niêm mạc dạ dày hoặc tá tràng do mất cân bằng giữa acid và các yếu tố bảo vệ niêm mạc.",
+      "causes": "Vi khuẩn Helicobacter pylori (70-80%), thuốc chống viêm không steroid (NSAIDs), stress, hút thuốc, uống nhiều rượu, acid dạ dày tăng",
+      "symptoms": "Đau bụng trên rốn, đau khi đói hoặc sau ăn 1-2 giờ, ợ hơi, ợ chua, đầy bụng, buồn nôn, sụt cân, đi ngoài phân đen nếu chảy máu",
+      "diagnosis": "Nội soi dạ dày tá tràng. Test H.pylori: test thở urease, kháng thể trong máu, kháng nguyên trong phân. X-quang dạ dày có thuốc cản quang",
+      "treatment": "Diệt H.pylori: 3 kháng sinh + thuốc ức chế bơm proton 10-14 ngày. Thuốc ức chế acid: PPI, H2-blocker. Thay đổi lối sống",
+      "prevention": "Vệ sinh thực phẩm, rửa tay sạch sẽ, ăn uống điều độ, tránh thức ăn cay nóng, không hút thuốc, hạn chế rượu bia, giảm stress",
+      "complications": "Chảy máu tiêu hóa, thủng dạ dày, hẹp môn vị, ung thư dạ dày (hiếm)",
+      "prognosis": "Khỏi hoàn toàn với điều trị đúng. Tái phát nếu không diệt được H.pylori hoặc tiếp tục các yếu tố nguy cơ",
+      "severity_level": "MODERATE",
+      "is_contagious": false,
+      "is_chronic": false,
+      "category": "Bệnh Tiêu Hóa"
+    },
+    {
+      "name": "Hen suyễn",
+      "icd_code": "J45",
+      "description": "Bệnh viêm mãn tính đường hô hấp gây co thắt phế quản, tăng tiết đờm và phù nề niêm mạc, dẫn đến khó thở.",
+      "causes": "Dị ứng (phấn hoa, bụi nhà, lông động vật), nhiễm trùng hô hấp, không khí lạnh, stress, vận động mạnh, thuốc (aspirin), thực phẩm",
+      "symptoms": "Khó thở, thở khò khè, ho khan (đặc biệt ban đêm và sáng sớm), ngực tức, mệt mỏi, lo lắng khi khó thở",
+      "diagnosis": "Khám lâm sàng: nghe phổi có ran khô. Đo chức năng hô hấp, test thuốc giãn phế quản. Test dị ứng da. X-quang ngực",
+      "treatment": "Thuốc giãn phế quản: Salbutamol, Terbutaline. Thuốc chống viêm: corticosteroid dạng hít. Tránh các yếu tố kích thích. Kế hoạch điều trị cá nhân",
+      "prevention": "Tránh các tác nhân gây dị ứng, giữ nhà cửa sạch sẽ, không hút thuốc, tiêm vaccine cúm, tập thể dục phù hợp, kiểm soát stress",
+      "complications": "Cơn hen cấp nghiêm trọng, viêm phổi, khí phế thũng, suy hô hấp mãn tính",
+      "prognosis": "Kiểm soát tốt giúp sống bình thường. Trẻ em có thể khỏi khi lớn. Cần theo dõi và điều trị lâu dài",
+      "severity_level": "MODERATE",
+      "is_contagious": false,
+      "is_chronic": true,
+      "category": "Bệnh Hô Hấp"
+    }
+  ],
+  "symptoms": [
+    {
+      "name": "Sốt",
+      "description": "Thân nhiệt tăng cao trên 37.5°C, là phản ứng tự nhiên của cơ thể với nhiễm trùng, viêm nhiễm hoặc các bệnh lý khác",
+      "body_part": "Toàn thân",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Nhiễm virus (cúm, COVID-19), nhiễm khuẩn (viêm phổi, viêm họng), sốt rét, sốt xuất huyết, viêm ruột thừa, nhiễm trùng tiết niệu",
+      "when_to_see_doctor": "Sốt trên 39°C, sốt kéo dài hơn 3 ngày, kèm khó thở, đau ngực, co giật, ý thức lơ mơ, trẻ em dưới 3 tháng tuổi",
+      "home_remedies": "Uống nhiều nước (2-3 lít/ngày), nghỉ ngơi đầy đủ, chườm mát trán và nách, mặc quần áo thoáng mát, theo dõi thân nhiệt 4-6 giờ/lần",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Ho",
+      "description": "Phản xạ bảo vệ của cơ thể để loại bỏ chất lạ, đờm hoặc chất kích thích khỏi đường hô hấp",
+      "body_part": "Hệ hô hấp",
+      "urgency_level": "LOW",
+      "possible_causes": "Cảm lạnh thông thường, viêm phổi, hen suyễn, dị ứng, lao phổi, COVID-19, ung thư phổi, thuốc ACE inhibitor",
+      "when_to_see_doctor": "Ho ra máu, ho kéo dài hơn 3 tuần, kèm sốt cao, khó thở, đau ngực, sụt cân không rõ nguyên nhân",
+      "home_remedies": "Uống nước ấm, mật ong pha chanh, nghỉ ngọi đầy đủ, tránh khói bụi và chất kích thích, súc họng nước muối, tăng độ ẩm không khí",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Đau ngực",
+      "description": "Cảm giác khó chịu, đau hoặc áp lực ở vùng ngực, có thể từ tim, phổi, cơ, xương sườn hoặc thực quản",
+      "body_part": "Ngực",
+      "urgency_level": "HIGH",
+      "possible_causes": "Nhồi máu cơ tim, đau thắt ngực, viêm màng tim, tắc mạch phổi, viêm phổi, trào ngược dạ dày, căng cơ, lo âu",
+      "when_to_see_doctor": "Đau ngực dữ dội đột ngột, kèm khó thở, đổ mồ hôi, buồn nôn, đau lan ra tay trái, cổ, hàm",
+      "home_remedies": "Nghỉ ngơi, ngồi thẳng, thở chậm và sâu. KHÔNG tự điều trị nếu nghi ngờ đau tim - gọi cấp cứu 115 ngay",
+      "category": "Triệu Chứng Cấp Cứu"
+    },
+    {
+      "name": "Khó thở",
+      "description": "Cảm giác không thể hít thở đầy đủ, thở nông hoặc cần gắng sức để thở",
+      "body_part": "Hệ hô hấp",
+      "urgency_level": "HIGH",
+      "possible_causes": "Hen suyễn, viêm phổi, suy tim, tắc mạch phổi, COVID-19, dị ứng nặng, lo âu, thiếu máu",
+      "when_to_see_doctor": "Khó thở đột ngột nghiêm trọng, kèm đau ngực, môi tím, ý thức lơ mơ, không thể nói được",
+      "home_remedies": "Ngồi thẳng, thở chậm qua mũi, giữ bình tĩnh. Nếu có thuốc giãn phế quản đã được kê thì sử dụng theo chỉ dẫn",
+      "category": "Triệu Chứng Cấp Cứu"
+    },
+    {
+      "name": "Đau đầu",
+      "description": "Cảm giác đau ở vùng đầu, có thể từ nhẹ đến nặng, cấp tính hoặc mãn tính",
+      "body_part": "Đầu",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Căng thẳng, thiếu ngủ, tăng huyết áp, migraine, cảm cúm, viêm xoang, thoái hóa cột sống cổ, mất nước",
+      "when_to_see_doctor": "Đau đầu dữ dội đột ngột, kèm sốt cao và cứng gáy, buồn nôn và nôn, rối loạn thị giác, yếu liệt một bên người",
+      "home_remedies": "Nghỉ ngơi trong phòng tối và yên tĩnh, massage nhẹ vùng thái dương, chườm lạnh hoặc nóng, uống đủ nước, tránh stress",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Buồn nôn và nôn",
+      "description": "Cảm giác khó chịu ở dạ dày với xu hướng muốn nôn, có thể kèm theo nôn thực sự",
+      "body_part": "Hệ tiêu hóa",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Ngộ độc thực phẩm, viêm dạ dày, viêm ruột thừa, có thai, say tàu xe, stress, thuốc, migraine, viêm màng não",
+      "when_to_see_doctor": "Nôn ra máu, đau bụng dữ dội, sốt cao, mất nước nghiêm trọng, ý thức lơ mơ, cứng gáy",
+      "home_remedies": "Uống ít nước nhiều lần, ăn nhạt (cháo, bánh quy), nghỉ ngơi, tránh mùi mạnh, uống trà gừng loãng",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Chóng mặt",
+      "description": "Cảm giác đầu quay, mất thăng bằng hoặc cảm giác như sắp ngất",
+      "body_part": "Đầu/Tai trong",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Hạ huyết áp tư thế, thiếu máu, rối loạn tiền đình, viêm tai trong, thuốc, mất nước, đường huyết thấp",
+      "when_to_see_doctor": "Chóng mặt kèm đau đầu dữ dội, yếu liệt, rối loạn ngôn ngữ, đau ngực, khó thở",
+      "home_remedies": "Ngồi hoặc nằm ngay, uống nước, tránh thay đổi tư thế đột ngột, ăn đường nếu nghi ngờ hạ đường huyết",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Đau bụng",
+      "description": "Cảm giác đau, cứng hoặc khó chịu ở vùng bụng, có thể cục bộ hoặc lan tỏa",
+      "body_part": "Bụng",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Viêm ruột thừa, loét dạ dày, sỏi mật, viêm tụy, viêm ruột, rối loạn ruột, kinh nguyệt, căng thẳng",
+      "when_to_see_doctor": "Đau bụng dữ dội đột ngột, cứng bụng, sốt cao, nôn ra máu, đi ngoài ra máu, không thể đi tiểu",
+      "home_remedies": "Nghỉ ngơi, chườm ấm nhẹ, ăn nhạt, uống nhiều nước, tránh thức ăn cay nóng và dầu mỡ",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Mệt mỏi",
+      "description": "Cảm giác kiệt sức, yếu hoặc thiếu năng lượng kéo dài",
+      "body_part": "Toàn thân",
+      "urgency_level": "LOW",
+      "possible_causes": "Thiếu ngủ, stress, thiếu máu, suy giáp, tiểu đường, trầm cảm, nhiễm trùng, ung thư, thuốc",
+      "when_to_see_doctor": "Mệt mỏi kéo dài hơn 2 tuần, kèm sụt cân, sốt, khó thở, đau ngực",
+      "home_remedies": "Ngủ đủ 7-8 tiếng/đêm, tập thể dục nhẹ, ăn uống cân bằng, giảm stress, hạn chế caffeine và rượu",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Co giật",
+      "description": "Cơn co thắt cơ bắp không kiểm soát được, có thể cục bộ hoặc toàn thân",
+      "body_part": "Cơ/Thần kinh",
+      "urgency_level": "EMERGENCY",
+      "possible_causes": "Động kinh, sốt cao (ở trẻ em), thiếu oxy não, rối loạn điện giải, ngộ độc, u não, viêm màng não",
+      "when_to_see_doctor": "Mọi cơn co giật đều cần đến bệnh viện ngay lập tức, đặc biệt nếu kéo dài >5 phút",
+      "home_remedies": "GỌI CẤP CỨU 115 NGAY. Đặt người bệnh nằm nghiêng, đệm mềm dưới đầu, không cho gì vào miệng, theo dõi thời gian co giật",
+      "category": "Triệu Chứng Cấp Cứu"
+    }
+  ],
+  "medical_terms": [
+    {
+      "term": "Hypertension",
+      "vietnamese_term": "Tăng huyết áp",
+      "definition": "Tình trạng huyết áp trong động mạch tăng cao một cách bền vững (≥140/90 mmHg)",
+      "pronunciation": "haɪpərˈtɛnʃən",
+      "synonyms": "high blood pressure, arterial hypertension",
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "term": "Myocardial Infarction",
+      "vietnamese_term": "Nhồi máu cơ tim",
+      "definition": "Tình trạng một phần cơ tim bị chết do thiếu máu cung cấp, thường do tắc động mạch vành",
+      "pronunciation": "ˌmaɪoʊˈkɑrdiəl ɪnˈfɑrkʃən",
+      "synonyms": "heart attack, MI, acute MI",
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "term": "Angina Pectoris",
+      "vietnamese_term": "Đau thắt ngực",
+      "definition": "Cơn đau ngực do thiếu máu cơ tim tạm thời, thường khi gắng sức",
+      "pronunciation": "ænˈdʒaɪnə ˈpɛktərɪs",
+      "synonyms": "chest pain, angina, cardiac chest pain",
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "term": "Diabetes Mellitus",
+      "vietnamese_term": "Tiểu đường",
+      "definition": "Nhóm bệnh chuyển hóa đặc trưng bởi tăng đường huyết do thiếu insulin hoặc kháng insulin",
+      "pronunciation": "ˌdaɪəˈbitiz ˈmɛlɪtəs",
+      "synonyms": "diabetes, DM, sugar diabetes",
+      "category": "Bệnh Nội Tiết"
+    },
+    {
+      "term": "Pneumonia",
+      "vietnamese_term": "Viêm phổi",
+      "definition": "Nhiễm trùng cấp tính của phổi do vi khuẩn, virus hoặc nấm",
+      "pronunciation": "nuˈmoʊniə",
+      "synonyms": "lung infection, pulmonary infection",
+      "category": "Bệnh Hô Hấp"
+    },
+    {
+      "term": "Asthma",
+      "vietnamese_term": "Hen suyễn",
+      "definition": "Bệnh viêm mãn tính đường hô hấp gây co thắt phế quản và khó thở",
+      "pronunciation": "ˈæzmə",
+      "synonyms": "bronchial asthma, allergic asthma",
+      "category": "Bệnh Hô Hấp"
+    },
+    {
+      "term": "Gastritis",
+      "vietnamese_term": "Viêm dạ dày",
+      "definition": "Viêm niêm mạc dạ dày do nhiều nguyên nhân như H.pylori, NSAIDs, stress",
+      "pronunciation": "ɡæˈstraɪtɪs",
+      "synonyms": "stomach inflammation",
+      "category": "Bệnh Tiêu Hóa"
+    },
+    {
+      "term": "Hepatitis B",
+      "vietnamese_term": "Viêm gan B",
+      "definition": "Bệnh truyền nhiễm do virus viêm gan B gây viêm gan cấp hoặc mãn tính",
+      "pronunciation": "ˌhɛpəˈtaɪtɪs bi",
+      "synonyms": "HBV infection, viral hepatitis B",
+      "category": "Bệnh Truyền Nhiễm"
+    },
+    {
+      "term": "Dyspnea",
+      "vietnamese_term": "Khó thở",
+      "definition": "Cảm giác khó thở hoặc thiếu không khí, có thể do nhiều nguyên nhân",
+      "pronunciation": "dɪspˈniə",
+      "synonyms": "shortness of breath, breathlessness",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "term": "Tachycardia",
+      "vietnamese_term": "Nhịp tim nhanh",
+      "definition": "Nhịp tim nhanh hơn bình thường (>100 lần/phút ở người lớn)",
+      "pronunciation": "ˌtækɪˈkɑrdiə",
+      "synonyms": "rapid heart rate, fast heartbeat",
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "term": "Bradycardia",
+      "vietnamese_term": "Nhịp tim chậm", 
+      "definition": "Nhịp tim chậm hơn bình thường (<60 lần/phút ở người lớn)",
+      "pronunciation": "ˌbreɪdɪˈkɑrdiə",
+      "synonyms": "slow heart rate, slow heartbeat",
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "term": "Hyponatremia",
+      "vietnamese_term": "Hạ natri máu",
+      "definition": "Nồng độ natri trong máu thấp (<135 mEq/L), có thể gây co giật",
+      "pronunciation": "ˌhaɪpoʊnəˈtrimiə",
+      "synonyms": "low sodium, sodium deficiency",
+      "category": "Bệnh Nội Tiết"
+    },
+    {
+      "term": "Syncope",
+      "vietnamese_term": "Ngất",
+      "definition": "Mất ý thức tạm thời do giảm tưới máu não",
+      "pronunciation": "ˈsɪŋkəpi",
+      "synonyms": "fainting, blackout, loss of consciousness",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "term": "Anemia",
+      "vietnamese_term": "Thiếu máu",
+      "definition": "Giảm số lượng hồng cầu hoặc hemoglobin trong máu",
+      "pronunciation": "əˈnimiə",
+      "synonyms": "low blood count, iron deficiency",
+      "category": "Bệnh Nội Tiết"
+    },
+    {
+      "term": "Hypotension",
+      "vietnamese_term": "Hạ huyết áp",
+      "definition": "Huyết áp thấp (<90/60 mmHg) có thể gây chóng mặt, ngất",
+      "pronunciation": "ˌhaɪpoʊˈtɛnʃən",
+      "synonyms": "low blood pressure",
+      "category": "Bệnh Tim Mạch"
+    }
+  ],
+  "tags": [
+    {
+      "name": "cấp-cứu",
+      "description": "Thông tin về cấp cứu y tế",
+      "color": "#dc3545"
+    },
+    {
+      "name": "tim-mạch",
+      "description": "Liên quan đến bệnh lý tim mạch",
+      "color": "#e74c3c"
+    },
+    {
+      "name": "tiểu-đường",
+      "description": "Thông tin về bệnh tiểu đường",
+      "color": "#f39c12"
+    },
+    {
+      "name": "hô-hấp",
+      "description": "Các bệnh lý về hệ hô hấp",
+      "color": "#3498db"
+    },
+    {
+      "name": "tiêu-hóa",
+      "description": "Các bệnh lý về hệ tiêu hóa",
+      "color": "#27ae60"
+    },
+    {
+      "name": "truyền-nhiễm",
+      "description": "Các bệnh truyền nhiễm",
+      "color": "#e67e22"
+    },
+    {
+      "name": "phòng-ngừa",
+      "description": "Biện pháp phòng ngừa bệnh tật",
+      "color": "#2ecc71"
+    },
+    {
+      "name": "dinh-dưỡng",
+      "description": "Thông tin về dinh dưỡng",
+      "color": "#9b59b6"
+    },
+    {
+      "name": "thuốc",
+      "description": "Thông tin về thuốc và điều trị",
+      "color": "#34495e"
+    },
+    {
+      "name": "vaccine",
+      "description": "Thông tin về vaccine",
+      "color": "#16a085"
+    },
+    {
+      "name": "triệu-chứng",
+      "description": "Các triệu chứng bệnh lý",
+      "color": "#f1c40f"
+    },
+    {
+      "name": "chăm-sóc",
+      "description": "Hướng dẫn chăm sóc sức khỏe",
+      "color": "#95a5a6"
+    },
+    {
+      "name": "vận-động",
+      "description": "Tập thể dục và vận động",
+      "color": "#1abc9c"
+    },
+    {
+      "name": "covid-19",
+      "description": "Thông tin về COVID-19",
+      "color": "#8e44ad"
+    },
+    {
+      "name": "đau-ngực",
+      "description": "Triệu chứng đau ngực",
+      "color": "#c0392b"
+    }
+  ]
+}

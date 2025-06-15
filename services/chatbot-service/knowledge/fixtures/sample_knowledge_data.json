@@ -1,0 +1,235 @@
+{
+  "categories": [
+    {
+      "name": "Bệnh Tim Mạch",
+      "category_type": "DISEASE",
+      "description": "Các bệnh lý liên quan đến tim mạch",
+      "is_active": true
+    },
+    {
+      "name": "Triệu Chứng Thường Gặp",
+      "category_type": "SYMPTOM",
+      "description": "Các triệu chứng thường gặp trong y tế",
+      "is_active": true
+    },
+    {
+      "name": "Điều Trị & Thuốc",
+      "category_type": "TREATMENT",
+      "description": "Thông tin về điều trị và thuốc",
+      "is_active": true
+    },
+    {
+      "name": "Phòng Ngừa",
+      "category_type": "PREVENTION",
+      "description": "Các biện pháp phòng ngừa bệnh",
+      "is_active": true
+    },
+    {
+      "name": "Cấp Cứu",
+      "category_type": "EMERGENCY",
+      "description": "Thông tin cấp cứu y tế",
+      "is_active": true
+    },
+    {
+      "name": "Dinh Dưỡng",
+      "category_type": "NUTRITION",
+      "description": "Thông tin về dinh dưỡng và sức khỏe",
+      "is_active": true
+    },
+    {
+      "name": "Câu Hỏi Thường Gặp",
+      "category_type": "FAQ",
+      "description": "Các câu hỏi thường gặp",
+      "is_active": true
+    }
+  ],
+  "tags": [
+    {
+      "name": "tim-mạch",
+      "description": "Liên quan đến tim mạch",
+      "color": "#e74c3c"
+    },
+    {
+      "name": "cấp-cứu",
+      "description": "Tình huống cấp cứu",
+      "color": "#f39c12"
+    },
+    {
+      "name": "phòng-ngừa",
+      "description": "Biện pháp phòng ngừa",
+      "color": "#27ae60"
+    },
+    {
+      "name": "dinh-dưỡng",
+      "description": "Liên quan đến dinh dưỡng",
+      "color": "#3498db"
+    },
+    {
+      "name": "thuốc",
+      "description": "Thông tin về thuốc",
+      "color": "#9b59b6"
+    }
+  ],
+  "medical_terms": [
+    {
+      "term": "Hypertension",
+      "vietnamese_term": "Tăng huyết áp",
+      "definition": "Tình trạng huyết áp trong động mạch tăng cao một cách bền vững",
+      "pronunciation": "haɪpərˈtɛnʃən",
+      "synonyms": "high blood pressure, arterial hypertension",
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "term": "Myocardial Infarction",
+      "vietnamese_term": "Nhồi máu cơ tim",
+      "definition": "Tình trạng một phần cơ tim bị chết do thiếu máu cung cấp",
+      "pronunciation": "ˌmaɪoʊˈkɑrdiəl ɪnˈfɑrkʃən",
+      "synonyms": "heart attack, MI",
+      "category": "Bệnh Tim Mạch"
+    },
+    {
+      "term": "Angina Pectoris",
+      "vietnamese_term": "Đau thắt ngực",
+      "definition": "Cơn đau ngực do thiếu máu cơ tim tạm thời",
+      "pronunciation": "ænˈdʒaɪnə ˈpɛktərɪs",
+      "synonyms": "chest pain, angina",
+      "category": "Bệnh Tim Mạch"
+    }
+  ],
+  "symptoms": [
+    {
+      "name": "Đau ngực",
+      "description": "Cảm giác đau, khó chịu ở vùng ngực",
+      "body_part": "Ngực",
+      "urgency_level": "HIGH",
+      "possible_causes": "Bệnh tim mạch, viêm phổi, căng thẳng cơ, trào ngược dạ dày",
+      "when_to_see_doctor": "Khi đau ngực kèm khó thở, đau lan ra tay trái, buồn nôn, đổ mồ hôi",
+      "home_remedies": "Nghỉ ngơi, tránh gắng sức, theo dõi triệu chứng",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Khó thở",
+      "description": "Cảm giác không thể hít thở đầy đủ hoặc thở nông",
+      "body_part": "Hệ hô hấp",
+      "urgency_level": "HIGH",
+      "possible_causes": "Bệnh tim, bệnh phổi, dị ứng, lo âu",
+      "when_to_see_doctor": "Khó thở đột ngột, khó thở kèm đau ngực, môi tím",
+      "home_remedies": "Ngồi thẳng, thở chậm và sâu, giữ bình tĩnh",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Đau đầu",
+      "description": "Cảm giác đau ở vùng đầu, có thể từ nhẹ đến nặng",
+      "body_part": "Đầu",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Căng thẳng, thiếu ngủ, tăng huyết áp, migraine",
+      "when_to_see_doctor": "Đau đầu dữ dội đột ngột, kèm sốt cao, buồn nôn",
+      "home_remedies": "Nghỉ ngơi trong phòng tối, massage nhẹ, uống đủ nước",
+      "category": "Triệu Chứng Thường Gặp"
+    },
+    {
+      "name": "Sốt",
+      "description": "Thân nhiệt tăng cao trên 37.5°C",
+      "body_part": "Toàn thân",
+      "urgency_level": "MEDIUM",
+      "possible_causes": "Nhiễm trùng vi khuẩn, virus, viêm nhiễm",
+      "when_to_see_doctor": "Sốt trên 39°C, sốt kéo dài trên 3 ngày, kèm co giật",
+      "home_remedies": "Uống nhiều nước, nghỉ ngơi, chườm mát, theo dõi thân nhiệt",
+      "category": "Triệu Chứng Thường Gặp"
+    }
+  ],
+  "diseases": [
+    {
+      "name": "Tăng huyết áp",
+      "icd_code": "I10",
+      "description": "Bệnh lý mãn tính với huyết áp động mạch cao liên tục",
+      "causes": "Lối sống không lành mạnh, di truyền, béo phì, căng thẳng, tuổi tác",
+      "symptoms": "Thường không có triệu chứng rõ ràng, có thể đau đầu, chóng mặt",
+      "diagnosis": "Đo huyết áp nhiều lần, theo dõi 24h, xét nghiệm máu",
+      "treatment": "Thuốc hạ áp, thay đổi lối sống, kiểm soát cân nặng",
+      "prevention": "Ăn ít muối, tập thể dục, không hút thuốc, kiểm soát stress",
+      "complications": "Đột quỵ, bệnh tim, suy thận",
+      "prognosis": "Tốt nếu điều trị đúng cách và tuân thủ",
+      "severity_level": "MODERATE",
+      "is_contagious": false,
+      "is_chronic": true,
+      "category": "Bệnh Tim Mạch",
+      "related_symptoms": ["Đau đầu"]
+    },
+    {
+      "name": "Nhồi máu cơ tim",
+      "icd_code": "I21",
+      "description": "Tình trạng nghiêm trọng khi cơ tim bị thiếu máu cục bộ",
+      "causes": "Tắc động mạch vành, cục máu đông, vỡ mảng xơ vữa",
+      "symptoms": "Đau ngực dữ dội, khó thở, buồn nôn, đổ mồ hôi",
+      "diagnosis": "Điện tâm đồ, xét nghiệm enzyme tim, chụp mạch vành",
+      "treatment": "Cấp cứu ngay, thuốc tiêu huyết khối, can thiệp mạch vành",
+      "prevention": "Kiểm soát yếu tố nguy cơ, lối sống lành mạnh",
+      "complications": "Suy tim, rối loạn nhịp tim, tử vong",
+      "prognosis": "Phụ thuộc vào thời gian điều trị và mức độ tổn thương",
+      "severity_level": "CRITICAL",
+      "is_contagious": false,
+      "is_chronic": false,
+      "category": "Bệnh Tim Mạch",
+      "related_symptoms": ["Đau ngực", "Khó thở"]
+    }
+  ],
+  "knowledge_entries": [
+    {
+      "title": "Cách nhận biết cơn đau tim và xử lý cấp cứu",
+      "content": "Cơn đau tim (nhồi máu cơ tim) là tình trạng cấp cứu y tế nghiêm trọng. Các dấu hiệu cảnh báo bao gồm:\\n\\n1. **Đau ngực dữ dội**: Cảm giác như bị nghiền nát, ép chặt ở giữa ngực, có thể lan ra cánh tay trái, vai, cổ, hàm.\\n\\n2. **Khó thở**: Thở gấp, thở nông, cảm giác ngạt thở.\\n\\n3. **Các triệu chứng kèm theo**: Buồn nôn, nôn, đổ mồ hôi lạnh, chóng mặt, yếu.\\n\\n**Xử lý cấp cứu:**\\n- Gọi cấp cứu 115 ngay lập tức\\n- Cho bệnh nhân ngồi hoặc nằm thoải mái\\n- Nếu có sẵn, cho nhai 1 viên aspirin 300mg\\n- Theo dõi nhịp thở và mạch\\n- Chuẩn bị hồi sức tim phổi nếu cần\\n\\n**Lưu ý quan trọng**: Thời gian vàng để cứu sống bệnh nhân là trong vòng 90 phút đầu.",
+      "summary": "Hướng dẫn nhận biết và xử lý cấp cứu cơn đau tim",
+      "category": "Cấp Cứu",
+      "content_type": "GUIDE",
+      "difficulty_level": "BASIC",
+      "keywords": "đau tim, nhồi máu cơ tim, cấp cứu, đau ngực, khó thở",
+      "author": "BS. Nguyễn Văn An",
+      "source": "Khoa Tim mạch - Bệnh viện Trung ương",
+      "reliability_score": 0.95,
+      "is_verified": true,
+      "tags": ["tim-mạch", "cấp-cứu"]
+    },
+    {
+      "title": "Chế độ ăn uống cho người tăng huyết áp",
+      "content": "Chế độ ăn uống đóng vai trò quan trọng trong việc kiểm soát tăng huyết áp. Dưới đây là những nguyên tắc cơ bản:\\n\\n**1. Giảm natri (muối):**\\n- Hạn chế muối < 5g/ngày (1 thìa cà phê)\\n- Tránh thực phẩm chế biến sẵn, đồ hộp\\n- Sử dụng gia vị thay thế: tỏi, gừng, thảo mộc\\n\\n**2. Tăng kali:**\\n- Ăn nhiều trái cây: chuối, cam, táo\\n- Rau xanh: rau bina, cải xoăn\\n- Các loại đậu và hạt\\n\\n**3. Chế độ DASH:**\\n- Trái cây và rau: 4-5 phần/ngày\\n- Ngũ cốc nguyên hạt: 6-8 phần/ngày\\n- Protein nạc: cá, gà, đậu\\n- Sữa ít béo: 2-3 phần/ngày\\n\\n**4. Hạn chế:**\\n- Đồ uống có cồn\\n- Thực phẩm nhiều đường\\n- Chất béo bão hòa\\n\\n**Lưu ý**: Kết hợp với tập thể dục đều đặn và theo dõi huyết áp thường xuyên.",
+      "summary": "Hướng dẫn chế độ ăn uống để kiểm soát tăng huyết áp",
+      "category": "Dinh Dưỡng",
+      "content_type": "GUIDE",
+      "difficulty_level": "BASIC",
+      "keywords": "tăng huyết áp, chế độ ăn, dinh dưỡng, muối, DASH",
+      "author": "BS. Phạm Thị Lan",
+      "source": "Viện Dinh dưỡng Quốc gia",
+      "reliability_score": 0.9,
+      "is_verified": true,
+      "tags": ["tim-mạch", "dinh-dưỡng", "phòng-ngừa"]
+    },
+    {
+      "title": "Khi nào cần đi khám bác sĩ tim mạch?",
+      "content": "Nhiều người thắc mắc khi nào cần đi khám chuyên khoa tim mạch. Dưới đây là các dấu hiệu cảnh báo:\\n\\n**Triệu chứng cấp tính - Cần cấp cứu ngay:**\\n- Đau ngực dữ dội, kéo dài > 15 phút\\n- Khó thở đột ngột, nghiêm trọng\\n- Ngất xỉu, chóng mặt nặng\\n- Tim đập nhanh bất thường > 120 lần/phút\\n\\n**Triệu chứng mạn tính - Cần khám trong tuần:**\\n- Đau ngực khi gắng sức\\n- Khó thở khi vận động nhẹ\\n- Phù chân, phù mắt cá\\n- Mệt mỏi bất thường\\n- Ho khan kéo dài\\n\\n**Yếu tố nguy cơ - Cần tầm soát định kỳ:**\\n- Tuổi > 40 (nam), > 50 (nữ)\\n- Tiền sử gia đình bệnh tim mạch\\n- Tăng huyết áp, tiểu đường\\n- Hút thuốc, béo phì\\n- Cholesterol cao\\n\\n**Tần suất khám:**\\n- Người khỏe mạnh: 2 năm/lần sau 40 tuổi\\n- Có yếu tố nguy cơ: 6-12 tháng/lần\\n- Đã mắc bệnh tim: theo chỉ định bác sĩ",
+      "summary": "Hướng dẫn khi nào cần đi khám bác sĩ tim mạch",
+      "category": "Câu Hỏi Thường Gặp",
+      "content_type": "FAQ",
+      "difficulty_level": "BASIC",
+      "keywords": "khám tim mạch, triệu chứng tim mạch, yếu tố nguy cơ",
+      "author": "BS. Lê Minh Tuấn",
+      "source": "Hội Tim mạch học Việt Nam",
+      "reliability_score": 0.92,
+      "is_verified": true,
+      "tags": ["tim-mạch", "phòng-ngừa"]
+    },
+    {
+      "title": "Thuốc điều trị tăng huyết áp - Những điều cần biết",
+      "content": "Hiểu rõ về thuốc điều trị tăng huyết áp giúp bệnh nhân tuân thủ điều trị tốt hơn:\\n\\n**Các nhóm thuốc chính:**\\n\\n**1. Thuốc ức chế ACE (ACEI):**\\n- Tên thuốc: Captopril, Enalapril, Lisinopril\\n- Cơ chế: Giãn mạch máu, giảm tải tim\\n- Tác dụng phụ: Ho khan (10-15%)\\n\\n**2. Thuốc chẹn thụ thể Angiotensin (ARB):**\\n- Tên thuốc: Losartan, Valsartan, Telmisartan\\n- Ưu điểm: Ít ho hơn ACEI\\n- Bảo vệ thận, tim\\n\\n**3. Thuốc chẹn kênh canxi:**\\n- Tên thuốc: Amlodipine, Nifedipine\\n- Tác dụng: Giãn mạch nhanh\\n- Tác dụng phụ: Phù cổ chân\\n\\n**4. Thuốc lợi tiểu:**\\n- Tên thuốc: Hydrochlorothiazide, Indapamide\\n- Cơ chế: Giảm thể tích tuần hoàn\\n- Lưu ý: Theo dõi điện giải\\n\\n**Nguyên tắc sử dụng:**\\n- Uống đúng giờ, đúng liều\\n- Không tự ý ngừng thuốc\\n- Theo dõi huyết áp tại nhà\\n- Tái khám định kỳ\\n- Báo cáo tác dụng phụ",
+      "summary": "Thông tin về các loại thuốc điều trị tăng huyết áp",
+      "category": "Điều Trị & Thuốc",
+      "content_type": "ARTICLE",
+      "difficulty_level": "INTERMEDIATE",
+      "keywords": "thuốc hạ áp, điều trị tăng huyết áp, ACE inhibitor, ARB",
+      "author": "Dược sĩ Hoàng Thị Mai",
+      "source": "Bệnh viện Tim Hà Nội",
+      "reliability_score": 0.88,
+      "is_verified": true,
+      "tags": ["tim-mạch", "thuốc"]
+    }
+  ]
+}
